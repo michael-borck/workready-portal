@@ -67,13 +67,14 @@
                         <span class="nav-icon">&#128101;</span>
                         Team
                     </button>
+                    <button class="nav-item" data-view="primer">
+                        <span class="nav-icon">&#127918;</span>
+                        Play the Primer
+                    </button>
                 </nav>
 
                 <div class="sidebar-section">
-                    <h4>Resources</h4>
-                    <button id="primer-link" class="sidebar-link">
-                        &#127918; Play the Primer
-                    </button>
+                    <h4>External</h4>
                     <a href="https://michael-borck.github.io/workready-jobs/" target="_blank" id="job-board-link" class="sidebar-link">
                         &#128269; seek.jobs
                     </a>
@@ -116,23 +117,15 @@
                     <h2>Your Team</h2>
                     <div class="placeholder">Team view coming soon. You'll see your colleagues here — both other students in your intake and AI characters.</div>
                 </div>
+
+                <!-- Primer view (iframe in main content area) -->
+                <div id="view-primer" class="view view-primer hidden">
+                    <iframe id="primer-iframe" class="primer-iframe"
+                            title="WorkReady Primer"
+                            sandbox="allow-scripts allow-same-origin"></iframe>
+                </div>
             </section>
         </main>
-    </div>
-
-    <!-- Primer modal (full-screen iframe) -->
-    <div id="primer-modal" class="modal modal-fullscreen hidden">
-        <div class="modal-fullscreen-content">
-            <header class="modal-fullscreen-header">
-                <div class="modal-fullscreen-title brand">
-                    <span class="brand-work">Work</span><span class="brand-ready">Ready</span><span class="brand-suffix">PRIMER</span>
-                </div>
-                <button class="modal-close" id="primer-close" aria-label="Close primer">&times;</button>
-            </header>
-            <iframe id="primer-iframe" class="primer-iframe"
-                    title="WorkReady Primer"
-                    sandbox="allow-scripts allow-same-origin"></iframe>
-        </div>
     </div>
 
     <!-- Message modal -->

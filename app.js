@@ -184,7 +184,7 @@
                 '<button id="dashboard-primer-btn" class="btn btn-primary">' +
                 'Play the Primer</button>' +
                 '<a href="' + CONFIG.JOBS_URL + '" target="_blank" class="btn btn-primary">' +
-                'Browse WorkReady Jobs</a>' +
+                'Browse seek.jobs</a>' +
                 '</div>' +
                 '</div>';
         } else if (s.state === 'APPLIED') {

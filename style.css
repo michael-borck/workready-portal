@@ -36,6 +36,14 @@ body {
 }
 .brand-work { color: var(--sim-primary); }
 .brand-ready { color: var(--sim-accent); }
+.brand-suffix {
+    color: var(--sim-muted);
+    font-weight: 400;
+    font-size: 0.7em;
+    letter-spacing: 0.08em;
+    margin-left: 0.4rem;
+    text-transform: uppercase;
+}
 .brand-link { text-decoration: none; }
 
 /* --- Sign-in screen --- */
@@ -452,27 +460,26 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1.5rem;
-    background: var(--sim-primary);
-    color: white;
+    background: var(--sim-white);
+    border-bottom: 1px solid var(--sim-border);
     flex-shrink: 0;
 }
 
 .modal-fullscreen-title {
-    font-size: 1.05rem;
-    font-weight: 600;
+    font-size: 1.4rem;
     display: flex;
-    align-items: center;
-    gap: 0.6rem;
+    align-items: baseline;
+    gap: 0;
 }
 
 .modal-fullscreen-header .modal-close {
     position: static;
-    color: white;
+    color: var(--sim-muted);
     font-size: 2rem;
     line-height: 1;
     padding: 0 0.5rem;
 }
-.modal-fullscreen-header .modal-close:hover { opacity: 0.7; }
+.modal-fullscreen-header .modal-close:hover { color: var(--sim-text); }
 
 .primer-iframe {
     flex: 1;

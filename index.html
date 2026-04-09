@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkReady — Your Internship Journey</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Sign-in screen -->
+    <section id="signin" class="screen">
+        <div class="signin-card">
+            <h1 class="brand">
+                <span class="brand-work">Work</span><span class="brand-ready">Ready</span>
+            </h1>
+            <p class="signin-tagline">Your simulated internship experience</p>
+            <form id="signin-form" class="signin-form">
+                <label for="email">Curtin email address</label>
+                <input type="email" id="email" name="email" required
+                       placeholder="firstname.lastname@student.curtin.edu.au">
+                <button type="submit" class="btn btn-primary">Sign in</button>
+            </form>
+            <p class="signin-help">No password required for the simulation. Use any email to begin.</p>
+        </div>
+    </section>
+
+    <!-- Main app shell -->
+    <div id="app" class="app hidden">
+        <header class="header">
+            <div class="wrap header-content">
+                <a href="#" class="brand-link" id="brand-link">
+                    <span class="brand">
+                        <span class="brand-work">Work</span><span class="brand-ready">Ready</span>
+                    </span>
+                </a>
+                <div class="header-meta">
+                    <span id="state-badge" class="state-badge">Not Applied</span>
+                    <span id="user-name" class="user-name"></span>
+                    <button id="signout-btn" class="btn btn-link">Sign out</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="wrap main">
+            <!-- Sidebar navigation -->
+            <aside class="sidebar">
+                <nav class="nav">
+                    <button class="nav-item active" data-view="dashboard">
+                        <span class="nav-icon">&#127968;</span>
+                        Dashboard
+                    </button>
+                    <button class="nav-item" data-view="inbox-personal">
+                        <span class="nav-icon">&#9993;</span>
+                        Personal Inbox
+                        <span id="unread-personal" class="badge hidden">0</span>
+                    </button>
+                    <button class="nav-item hidden" data-view="inbox-work" id="nav-inbox-work">
+                        <span class="nav-icon">&#128188;</span>
+                        Work Inbox
+                        <span id="unread-work" class="badge hidden">0</span>
+                    </button>
+                    <button class="nav-item hidden" data-view="tasks" id="nav-tasks">
+                        <span class="nav-icon">&#128221;</span>
+                        Tasks
+                    </button>
+                    <button class="nav-item hidden" data-view="team" id="nav-team">
+                        <span class="nav-icon">&#128101;</span>
+                        Team
+                    </button>
+                </nav>
+
+                <div class="sidebar-section">
+                    <h4>Resources</h4>
+                    <a href="https://michael-borck.github.io/workready-primer/" target="_blank" class="sidebar-link">
+                        &#127918; Play the Primer
+                    </a>
+                    <a href="https://michael-borck.github.io/workready-jobs/" target="_blank" id="job-board-link" class="sidebar-link">
+                        &#128269; Job Board
+                    </a>
+                    <a href="#" target="_blank" id="intranet-link" class="sidebar-link hidden">
+                        &#127760; Company Intranet
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Main content area -->
+            <section class="content">
+                <!-- Dashboard view -->
+                <div id="view-dashboard" class="view">
+                    <h2 id="dashboard-title">Welcome to WorkReady</h2>
+                    <div id="dashboard-content"></div>
+                </div>
+
+                <!-- Personal inbox view -->
+                <div id="view-inbox-personal" class="view hidden">
+                    <h2>Personal Inbox</h2>
+                    <p class="view-subtitle">Application updates and correspondence with employers</p>
+                    <div id="inbox-personal-list" class="message-list"></div>
+                </div>
+
+                <!-- Work inbox view -->
+                <div id="view-inbox-work" class="view hidden">
+                    <h2>Work Inbox</h2>
+                    <p class="view-subtitle">Messages from your manager, mentor, and colleagues</p>
+                    <div id="inbox-work-list" class="message-list"></div>
+                </div>
+
+                <!-- Tasks view -->
+                <div id="view-tasks" class="view hidden">
+                    <h2>Your Tasks</h2>
+                    <div class="placeholder">Task workspace coming soon. This is where you'll receive your work assignments and submit your deliverables.</div>
+                </div>
+
+                <!-- Team view -->
+                <div id="view-team" class="view hidden">
+                    <h2>Your Team</h2>
+                    <div class="placeholder">Team view coming soon. You'll see your colleagues here — both other students in your intake and AI characters.</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Message modal -->
+    <div id="message-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">&times;</button>
+            <div class="modal-meta">
+                <h3 id="modal-subject"></h3>
+                <p class="modal-from">From: <span id="modal-sender"></span> <span id="modal-role"></span></p>
+                <p class="modal-date" id="modal-date"></p>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

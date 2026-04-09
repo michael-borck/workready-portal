@@ -5,17 +5,17 @@ window.WORKREADY_CONFIG = {
     API_BASE: localStorage.getItem('workready_api_base') || 'https://workready-api.eduserver.au',
 
     // External links
-    PRIMER_URL: 'https://michael-borck.github.io/workready-primer/',
-    JOBS_URL: 'https://michael-borck.github.io/workready-jobs/',
+    PRIMER_URL: 'https://primer.eduserver.au/',
+    JOBS_URL: 'https://seekjobs.eduserver.au/',
 
     // Company sites — used to link to the assigned company's intranet
     COMPANY_URLS: {
-        'nexuspoint-systems': 'https://michael-borck.github.io/nexuspoint-systems/',
-        'ironvale-resources': 'https://michael-borck.github.io/ironvale-resources/',
-        'meridian-advisory': 'https://michael-borck.github.io/meridian-advisory/',
-        'metro-council-wa': 'https://michael-borck.github.io/metro-council-wa/',
-        'southern-cross-financial': 'https://michael-borck.github.io/southern-cross-financial/',
-        'horizon-foundation': 'https://michael-borck.github.io/horizon-foundation/',
+        'nexuspoint-systems': 'https://nexuspointsystems.eduserver.au/',
+        'ironvale-resources': 'https://ironvaleresources.eduserver.au/',
+        'meridian-advisory': 'https://meridianadvisory.eduserver.au/',
+        'metro-council-wa': 'https://metrocouncilwa.eduserver.au/',
+        'southern-cross-financial': 'https://southerncrossfinancial.eduserver.au/',
+        'horizon-foundation': 'https://horizonfoundation.eduserver.au/',
     },
 
     // Company themes — CSS variable overrides applied when hired

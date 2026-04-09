@@ -2,7 +2,7 @@
 
 window.WORKREADY_CONFIG = {
     // API base URL — override this when deploying
-    API_BASE: localStorage.getItem('workready_api_base') || 'http://localhost:8000',
+    API_BASE: localStorage.getItem('workready_api_base') || 'https://workready-api.eduserver.au',
 
     // External links
     PRIMER_URL: 'https://michael-borck.github.io/workready-primer/',

@@ -34,6 +34,10 @@
         inboxWorkList: $('inbox-work-list'),
         modal: $('message-modal'),
         modalClose: $('modal-close'),
+        primerLink: $('primer-link'),
+        primerModal: $('primer-modal'),
+        primerClose: $('primer-close'),
+        primerIframe: $('primer-iframe'),
         modalSubject: $('modal-subject'),
         modalSender: $('modal-sender'),
         modalRole: $('modal-role'),
@@ -177,8 +181,8 @@
                 '<p>Begin with the interactive primer to learn what to expect, ' +
                 'then browse the job board to find a role that interests you.</p>' +
                 '<div class="action-buttons">' +
-                '<a href="' + CONFIG.PRIMER_URL + '" target="_blank" class="btn btn-primary">' +
-                'Play the Primer</a>' +
+                '<button id="dashboard-primer-btn" class="btn btn-primary">' +
+                'Play the Primer</button>' +
                 '<a href="' + CONFIG.JOBS_URL + '" target="_blank" class="btn btn-primary">' +
                 'Browse WorkReady Jobs</a>' +
                 '</div>' +
@@ -209,6 +213,12 @@
         }
 
         els.dashboardContent.innerHTML = html;
+
+        // Wire dashboard primer button if present
+        var dashPrimerBtn = $('dashboard-primer-btn');
+        if (dashPrimerBtn) {
+            dashPrimerBtn.addEventListener('click', openPrimer);
+        }
     }
 
     function renderApplicationList(apps) {
@@ -372,6 +382,30 @@
     els.modalClose.addEventListener('click', closeModal);
     els.modal.addEventListener('click', function (e) {
         if (e.target === els.modal) closeModal();
+    });
+
+    // Primer modal
+    function openPrimer() {
+        if (!els.primerIframe.src) {
+            els.primerIframe.src = CONFIG.PRIMER_URL;
+        }
+        els.primerModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePrimer() {
+        els.primerModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    els.primerLink.addEventListener('click', openPrimer);
+    els.primerClose.addEventListener('click', closePrimer);
+
+    // ESC key closes primer
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !els.primerModal.classList.contains('hidden')) {
+            closePrimer();
+        }
     });
 
     // --- Initial load ---

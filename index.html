@@ -71,9 +71,9 @@
 
                 <div class="sidebar-section">
                     <h4>Resources</h4>
-                    <a href="https://michael-borck.github.io/workready-primer/" target="_blank" class="sidebar-link">
+                    <button id="primer-link" class="sidebar-link">
                         &#127918; Play the Primer
-                    </a>
+                    </button>
                     <a href="https://michael-borck.github.io/workready-jobs/" target="_blank" id="job-board-link" class="sidebar-link">
                         &#128269; Job Board
                     </a>
@@ -118,6 +118,21 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Primer modal (full-screen iframe) -->
+    <div id="primer-modal" class="modal modal-fullscreen hidden">
+        <div class="modal-fullscreen-content">
+            <header class="modal-fullscreen-header">
+                <div class="modal-fullscreen-title">
+                    <span>&#127918;</span> WorkReady Primer
+                </div>
+                <button class="modal-close" id="primer-close" aria-label="Close primer">&times;</button>
+            </header>
+            <iframe id="primer-iframe" class="primer-iframe"
+                    title="WorkReady Primer"
+                    sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
     </div>
 
     <!-- Message modal -->

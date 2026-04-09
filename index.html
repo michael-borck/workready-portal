@@ -34,7 +34,18 @@
                     </span>
                 </a>
                 <div class="header-meta">
-                    <span id="state-badge" class="state-badge">Not Applied</span>
+                    <span id="state-badge" class="state-badge" tabindex="0">
+                        <span id="state-badge-label">Not Applied</span>
+                        <span class="state-tooltip" role="tooltip">
+                            <strong>Your simulation state</strong>
+                            <ul>
+                                <li><span class="tt-state">Not Applied</span> — browse jobs and play the primer</li>
+                                <li><span class="tt-state">Application Under Review</span> — waiting on outcome</li>
+                                <li><span class="tt-state">Employed</span> — you got the job, work begins</li>
+                                <li><span class="tt-state">Internship Complete</span> — all stages finished</li>
+                            </ul>
+                        </span>
+                    </span>
                     <span id="user-name" class="user-name"></span>
                     <button id="signout-btn" class="btn btn-link">Sign out</button>
                 </div>

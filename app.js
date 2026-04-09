@@ -35,6 +35,7 @@
         modal: $('message-modal'),
         modalClose: $('modal-close'),
         primerIframe: $('primer-iframe'),
+        stateBadgeLabel: $('state-badge-label'),
         modalSubject: $('modal-subject'),
         modalSender: $('modal-sender'),
         modalRole: $('modal-role'),
@@ -107,7 +108,7 @@
 
         // Header
         els.userName.textContent = s.name || s.email;
-        els.stateBadge.textContent = stateLabel(s.state);
+        els.stateBadgeLabel.textContent = stateLabel(s.state);
         els.stateBadge.className = 'state-badge state-' + s.state.toLowerCase();
 
         // Unread badges

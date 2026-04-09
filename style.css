@@ -193,11 +193,11 @@ body {
     top: calc(100% + 0.5rem);
     right: 0;
     z-index: 100;
-    background: #1f2937;
+    background: var(--sim-primary);
     color: white;
     padding: 0.85rem 1rem;
     border-radius: var(--sim-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(37, 87, 167, 0.25);
     font-size: 0.85rem;
     font-weight: 400;
     white-space: normal;
@@ -219,7 +219,7 @@ body {
     bottom: 100%;
     right: 1rem;
     border: 6px solid transparent;
-    border-bottom-color: #1f2937;
+    border-bottom-color: var(--sim-primary);
 }
 
 .state-tooltip strong {

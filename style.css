@@ -522,6 +522,181 @@ body {
 .modal-date { font-size: 0.85rem; color: var(--sim-muted); margin-top: 0.25rem; }
 .modal-body { white-space: pre-wrap; line-height: 1.7; }
 
+/* --- Interview view --- */
+.view-interview {
+    display: flex;
+    flex-direction: column;
+    min-height: 70vh;
+}
+
+.interview-pre {
+    padding: 1rem 0;
+}
+.interview-pre h2 { margin-bottom: 1rem; }
+.interview-pre p { margin-bottom: 1rem; }
+
+.btn-cta {
+    font-size: 1.05rem;
+    padding: 0.85rem 2rem;
+    margin-top: 1rem;
+}
+
+.interview-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: 70vh;
+}
+
+.interview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--sim-border);
+    margin-bottom: 1rem;
+}
+
+.interview-manager-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--sim-primary);
+}
+.interview-manager-role {
+    font-size: 0.9rem;
+    color: var(--sim-muted);
+    margin-top: 0.15rem;
+}
+.interview-progress {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--sim-muted);
+}
+
+.interview-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0;
+    max-height: 60vh;
+    min-height: 300px;
+}
+
+.interview-msg {
+    display: flex;
+    margin-bottom: 1rem;
+}
+.interview-msg-manager { justify-content: flex-start; }
+.interview-msg-student { justify-content: flex-end; }
+
+.interview-msg-bubble {
+    max-width: 75%;
+    padding: 0.85rem 1.2rem;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.interview-msg-manager .interview-msg-bubble {
+    background: var(--sim-bg);
+    border: 1px solid var(--sim-border);
+    color: var(--sim-text);
+    border-bottom-left-radius: 4px;
+}
+.interview-msg-student .interview-msg-bubble {
+    background: var(--sim-primary);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.interview-thinking {
+    padding: 1rem 1.2rem !important;
+}
+.interview-thinking .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 4px;
+    border-radius: 50%;
+    background: var(--sim-muted);
+    animation: dot-pulse 1.4s infinite ease-in-out both;
+}
+.interview-thinking .dot:nth-child(2) { animation-delay: 0.2s; }
+.interview-thinking .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-pulse {
+    0%, 80%, 100% { opacity: 0.3; }
+    40% { opacity: 1; }
+}
+
+.interview-input {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sim-border);
+    align-items: stretch;
+}
+.interview-input textarea {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--sim-border);
+    border-radius: var(--sim-radius);
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 60px;
+}
+.interview-input textarea:focus {
+    outline: none;
+    border-color: var(--sim-primary);
+    box-shadow: 0 0 0 3px rgba(37, 87, 167, 0.15);
+}
+.interview-input button {
+    align-self: flex-end;
+}
+
+.interview-result {
+    padding: 1rem 0;
+}
+.interview-result h2 { margin-bottom: 1rem; }
+.interview-result-summary {
+    font-size: 1.05rem;
+    color: var(--sim-text);
+    padding: 1rem;
+    background: var(--sim-bg);
+    border-left: 4px solid var(--sim-primary);
+    border-radius: var(--sim-radius);
+    margin-bottom: 1.5rem;
+}
+.interview-result-score {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+.interview-result-section {
+    margin-bottom: 1.5rem;
+}
+.interview-result-section h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--sim-primary);
+}
+.interview-result-section ul {
+    padding-left: 1.5rem;
+    color: var(--sim-text);
+}
+.interview-result-section li {
+    margin-bottom: 0.3rem;
+}
+.interview-result-tailoring {
+    font-style: italic;
+    color: var(--sim-muted);
+    padding: 1rem;
+    background: var(--sim-bg);
+    border-radius: var(--sim-radius);
+    margin-bottom: 1.5rem;
+}
+
 /* --- Primer view (iframe inside main content area) --- */
 .view-primer {
     /* Remove the inner padding from .content for this view */

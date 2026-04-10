@@ -8,6 +8,7 @@
         email: null,
         student: null,
         currentView: 'dashboard',
+        interview: null,  // active interview session, when in the chat
     };
 
     // --- Element references ---
@@ -22,6 +23,7 @@
         signoutBtn: $('signout-btn'),
         navItems: document.querySelectorAll('.nav-item'),
         navInboxWork: $('nav-inbox-work'),
+        navInterview: $('nav-interview'),
         navTasks: $('nav-tasks'),
         navTeam: $('nav-team'),
         unreadPersonal: $('unread-personal'),
@@ -36,6 +38,18 @@
         modalClose: $('modal-close'),
         primerIframe: $('primer-iframe'),
         stateBadgeLabel: $('state-badge-label'),
+        // Interview view elements
+        interviewPre: $('interview-pre'),
+        interviewChat: $('interview-chat'),
+        interviewResult: $('interview-result'),
+        interviewManagerName: $('interview-manager-name'),
+        interviewManagerRole: $('interview-manager-role'),
+        interviewTurnIndicator: $('interview-turn-indicator'),
+        interviewEndBtn: $('interview-end-btn'),
+        interviewMessages: $('interview-messages'),
+        interviewInputForm: $('interview-input-form'),
+        interviewInput: $('interview-input'),
+        interviewSendBtn: $('interview-send-btn'),
         modalSubject: $('modal-subject'),
         modalSender: $('modal-sender'),
         modalRole: $('modal-role'),
@@ -117,7 +131,10 @@
 
         // Show/hide work-only nav items
         var hired = s.state === 'HIRED' || s.state === 'COMPLETED';
+        var inInterviewStage = hired && s.active_application
+            && s.active_application.current_stage === 'interview';
         toggle(els.navInboxWork, hired);
+        toggle(els.navInterview, inInterviewStage);
         toggle(els.navTasks, hired);
         toggle(els.navTeam, hired);
         toggle(els.intranetLink, hired);
@@ -198,16 +215,37 @@
                 renderApplicationList(s.applications);
         } else if (s.state === 'HIRED') {
             var company = s.active_application.company_slug;
-            els.dashboardTitle.textContent = 'Welcome to ' + companyName(company);
-            html =
-                '<p>You are now an intern at ' + companyName(company) + ', working as a ' +
-                '<strong>' + escapeHtml(s.active_application.job_title) + '</strong>.</p>' +
-                '<p>Your current stage: <strong>' + stageLabel(s.active_application.current_stage) + '</strong></p>' +
-                '<div class="action-buttons">' +
-                '<a href="' + CONFIG.COMPANY_URLS[company] + '" target="_blank" class="btn btn-primary">' +
-                'Visit Company Intranet</a>' +
-                '</div>' +
-                '<h3 style="margin-top: 2rem;">Your Application History</h3>' +
+            var stage = s.active_application.current_stage;
+            var atInterview = stage === 'interview';
+            els.dashboardTitle.textContent = atInterview
+                ? 'You\'ve made it to interview at ' + companyName(company) + '!'
+                : 'Welcome to ' + companyName(company);
+
+            if (atInterview) {
+                html =
+                    '<p>Congratulations — your application for the <strong>' +
+                    escapeHtml(s.active_application.job_title) + '</strong> role at ' +
+                    companyName(company) + ' has progressed to the interview stage.</p>' +
+                    '<p>Your interview will be a conversation with the hiring manager. ' +
+                    'It should take around 15 minutes. Take your time, and remember — this is a ' +
+                    'safe space to practice.</p>' +
+                    '<div class="action-buttons">' +
+                    '<button id="dashboard-start-interview-btn" class="btn btn-primary btn-cta">' +
+                    '&#127908; Start Interview</button>' +
+                    '<a href="' + CONFIG.COMPANY_URLS[company] + '" target="_blank" class="btn btn-secondary">' +
+                    'Review Company Intranet</a>' +
+                    '</div>';
+            } else {
+                html =
+                    '<p>You are now an intern at ' + companyName(company) + ', working as a ' +
+                    '<strong>' + escapeHtml(s.active_application.job_title) + '</strong>.</p>' +
+                    '<p>Your current stage: <strong>' + stageLabel(stage) + '</strong></p>' +
+                    '<div class="action-buttons">' +
+                    '<a href="' + CONFIG.COMPANY_URLS[company] + '" target="_blank" class="btn btn-primary">' +
+                    'Visit Company Intranet</a>' +
+                    '</div>';
+            }
+            html += '<h3 style="margin-top: 2rem;">Your Application History</h3>' +
                 renderApplicationList(s.applications);
         } else if (s.state === 'COMPLETED') {
             els.dashboardTitle.textContent = 'Internship Complete';
@@ -223,6 +261,14 @@
         if (dashPrimerBtn) {
             dashPrimerBtn.addEventListener('click', function () {
                 switchView('primer');
+            });
+        }
+
+        // Wire dashboard start-interview button if present
+        var dashInterviewBtn = $('dashboard-start-interview-btn');
+        if (dashInterviewBtn) {
+            dashInterviewBtn.addEventListener('click', function () {
+                switchView('interview');
             });
         }
     }
@@ -367,6 +413,7 @@
         if (view === 'inbox-personal') loadInbox('personal');
         if (view === 'inbox-work') loadInbox('work');
         if (view === 'primer') loadPrimerIframe();
+        if (view === 'interview') loadInterview();
     }
 
     function loadPrimerIframe() {
@@ -374,6 +421,262 @@
         if (!els.primerIframe.src) {
             els.primerIframe.src = CONFIG.PRIMER_URL;
         }
+    }
+
+    // --- Interview view ---
+
+    function loadInterview() {
+        var s = state.student;
+        if (!s || !s.active_application) {
+            renderInterviewIdle('You don\'t have an active interview right now.');
+            return;
+        }
+
+        var app = s.active_application;
+        if (app.current_stage !== 'interview') {
+            renderInterviewIdle('Your current application is at the ' +
+                stageLabel(app.current_stage) + ' stage, not interview.');
+            return;
+        }
+
+        // Show the pre-interview state with a "Begin" button
+        renderInterviewPre(app);
+    }
+
+    function renderInterviewIdle(message) {
+        els.interviewPre.classList.remove('hidden');
+        els.interviewChat.classList.add('hidden');
+        els.interviewResult.classList.add('hidden');
+        els.interviewPre.innerHTML =
+            '<div class="placeholder">' + escapeHtml(message) + '</div>';
+    }
+
+    function renderInterviewPre(app) {
+        els.interviewPre.classList.remove('hidden');
+        els.interviewChat.classList.add('hidden');
+        els.interviewResult.classList.add('hidden');
+        els.interviewPre.innerHTML =
+            '<h2>Ready to interview?</h2>' +
+            '<p>You\'re about to interview for the <strong>' +
+            escapeHtml(app.job_title) + '</strong> role at ' +
+            escapeHtml(companyName(app.company_slug)) + '.</p>' +
+            '<p>The interview will be a conversation with the hiring manager. ' +
+            'Take your time, think through your answers, and stay in the moment. ' +
+            'There are roughly 10 questions and the interview should take about 15 minutes.</p>' +
+            '<p><strong>This is a safe space to practice.</strong> If it doesn\'t go well, ' +
+            'you\'ll get feedback to learn from and can apply to other roles.</p>' +
+            '<button id="interview-begin-btn" class="btn btn-primary btn-cta">' +
+            'Begin Interview</button>';
+        $('interview-begin-btn').addEventListener('click', startInterview);
+    }
+
+    function startInterview() {
+        var app = state.student.active_application;
+        var beginBtn = $('interview-begin-btn');
+        if (beginBtn) {
+            beginBtn.disabled = true;
+            beginBtn.textContent = 'Connecting to interviewer...';
+        }
+        fetch(CONFIG.API_BASE + '/api/v1/interview/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ application_id: app.id }),
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Could not start interview');
+                return r.json();
+            })
+            .then(function (session) {
+                state.interview = session;
+                showInterviewChat(session);
+            })
+            .catch(function (err) {
+                if (beginBtn) {
+                    beginBtn.disabled = false;
+                    beginBtn.textContent = 'Begin Interview';
+                }
+                alert('Failed to start interview: ' + err.message);
+            });
+    }
+
+    function showInterviewChat(session) {
+        els.interviewPre.classList.add('hidden');
+        els.interviewChat.classList.remove('hidden');
+        els.interviewResult.classList.add('hidden');
+
+        els.interviewManagerName.textContent = session.manager_name;
+        els.interviewManagerRole.textContent = session.manager_role
+            ? session.manager_role + ' at ' + session.company_name
+            : session.company_name;
+
+        renderTranscript(session.transcript);
+        updateTurnIndicator(session.turn, session.target_turns);
+
+        els.interviewInput.value = '';
+        els.interviewInput.focus();
+    }
+
+    function renderTranscript(messages) {
+        var html = '';
+        messages.forEach(function (m) {
+            var who = m.role === 'assistant' ? 'manager' : 'student';
+            html += '<div class="interview-msg interview-msg-' + who + '">' +
+                '<div class="interview-msg-bubble">' +
+                escapeHtml(m.content).replace(/\n/g, '<br>') +
+                '</div></div>';
+        });
+        els.interviewMessages.innerHTML = html;
+        // Scroll to bottom
+        els.interviewMessages.scrollTop = els.interviewMessages.scrollHeight;
+    }
+
+    function appendMessage(role, content) {
+        var who = role === 'assistant' ? 'manager' : 'student';
+        var div = document.createElement('div');
+        div.className = 'interview-msg interview-msg-' + who;
+        div.innerHTML = '<div class="interview-msg-bubble">' +
+            escapeHtml(content).replace(/\n/g, '<br>') + '</div>';
+        els.interviewMessages.appendChild(div);
+        els.interviewMessages.scrollTop = els.interviewMessages.scrollHeight;
+    }
+
+    function appendThinking() {
+        var div = document.createElement('div');
+        div.className = 'interview-msg interview-msg-manager';
+        div.id = 'interview-thinking';
+        div.innerHTML = '<div class="interview-msg-bubble interview-thinking">' +
+            '<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+        els.interviewMessages.appendChild(div);
+        els.interviewMessages.scrollTop = els.interviewMessages.scrollHeight;
+    }
+
+    function removeThinking() {
+        var t = $('interview-thinking');
+        if (t) t.remove();
+    }
+
+    function updateTurnIndicator(turn, target) {
+        if (!els.interviewTurnIndicator) return;
+        var displayTurn = Math.max(turn, 0);
+        els.interviewTurnIndicator.textContent =
+            'Question ' + (displayTurn + 1) + ' of ~' + target;
+    }
+
+    function sendInterviewMessage(e) {
+        e.preventDefault();
+        if (!state.interview) return;
+        var msg = els.interviewInput.value.trim();
+        if (!msg) return;
+
+        appendMessage('user', msg);
+        els.interviewInput.value = '';
+        els.interviewSendBtn.disabled = true;
+        els.interviewInput.disabled = true;
+        appendThinking();
+
+        fetch(CONFIG.API_BASE + '/api/v1/interview/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: state.interview.session_id,
+                message: msg,
+            }),
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Reply failed');
+                return r.json();
+            })
+            .then(function (reply) {
+                removeThinking();
+                appendMessage('assistant', reply.reply);
+                updateTurnIndicator(reply.turn, reply.target_turns);
+                els.interviewSendBtn.disabled = false;
+                els.interviewInput.disabled = false;
+                els.interviewInput.focus();
+                if (reply.suggested_wrap_up) {
+                    els.interviewTurnIndicator.textContent += ' (wrapping up)';
+                }
+            })
+            .catch(function (err) {
+                removeThinking();
+                appendMessage('assistant',
+                    '[Connection error: ' + err.message + '. Try again.]');
+                els.interviewSendBtn.disabled = false;
+                els.interviewInput.disabled = false;
+            });
+    }
+
+    function endInterview() {
+        if (!state.interview) return;
+        if (!confirm('End the interview now? You won\'t be able to add more messages.')) {
+            return;
+        }
+        els.interviewEndBtn.disabled = true;
+        els.interviewEndBtn.textContent = 'Closing interview...';
+        appendThinking();
+
+        fetch(CONFIG.API_BASE + '/api/v1/interview/' + state.interview.session_id + '/end', {
+            method: 'POST',
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Could not end interview');
+                return r.json();
+            })
+            .then(function (session) {
+                removeThinking();
+                state.interview = null;
+                showInterviewResult(session);
+                // Refresh student state to reflect new application status
+                loadStudentState();
+            })
+            .catch(function (err) {
+                removeThinking();
+                alert('Failed to end interview: ' + err.message);
+                els.interviewEndBtn.disabled = false;
+                els.interviewEndBtn.textContent = 'End interview';
+            });
+    }
+
+    function showInterviewResult(session) {
+        els.interviewPre.classList.add('hidden');
+        els.interviewChat.classList.add('hidden');
+        els.interviewResult.classList.remove('hidden');
+
+        var fb = session.feedback || {};
+        var passed = fb.proceed === true;
+        var feedback = fb.feedback || {};
+
+        var html =
+            '<h2>' + (passed
+                ? 'You\'re moving forward'
+                : 'Interview complete') + '</h2>' +
+            '<p class="interview-result-summary">' +
+            (fb.summary || '') + '</p>' +
+            '<div class="interview-result-score">' +
+            'Overall: <strong>' + (session.final_score || 0) + '/100</strong></div>' +
+            renderFeedbackSection('What worked well', feedback.strengths) +
+            renderFeedbackSection('Areas for improvement', feedback.gaps) +
+            renderFeedbackSection('Suggestions', feedback.suggestions) +
+            (feedback.tailoring ? '<p class="interview-result-tailoring">' +
+                escapeHtml(feedback.tailoring) + '</p>' : '') +
+            '<div class="action-buttons">' +
+            '<button id="interview-back-btn" class="btn btn-primary">Back to dashboard</button>' +
+            '</div>';
+        els.interviewResult.innerHTML = html;
+        $('interview-back-btn').addEventListener('click', function () {
+            switchView('dashboard');
+        });
+    }
+
+    function renderFeedbackSection(title, items) {
+        if (!items || items.length === 0) return '';
+        var html = '<div class="interview-result-section">' +
+            '<h3>' + escapeHtml(title) + '</h3><ul>';
+        items.forEach(function (item) {
+            html += '<li>' + escapeHtml(item) + '</li>';
+        });
+        html += '</ul></div>';
+        return html;
     }
 
     // --- Helpers ---
@@ -414,6 +717,22 @@
     els.modal.addEventListener('click', function (e) {
         if (e.target === els.modal) closeModal();
     });
+
+    // Interview chat events
+    if (els.interviewInputForm) {
+        els.interviewInputForm.addEventListener('submit', sendInterviewMessage);
+    }
+    if (els.interviewEndBtn) {
+        els.interviewEndBtn.addEventListener('click', endInterview);
+    }
+    // Submit on Cmd/Ctrl+Enter
+    if (els.interviewInput) {
+        els.interviewInput.addEventListener('keydown', function (e) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                sendInterviewMessage(e);
+            }
+        });
+    }
 
     // --- Initial load ---
     var savedEmail = localStorage.getItem('workready_email');

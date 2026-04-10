@@ -74,6 +74,10 @@
                         <span class="nav-icon">&#128221;</span>
                         Tasks
                     </button>
+                    <button class="nav-item hidden" data-view="interview" id="nav-interview">
+                        <span class="nav-icon">&#127908;</span>
+                        Interview
+                    </button>
                     <button class="nav-item hidden" data-view="team" id="nav-team">
                         <span class="nav-icon">&#128101;</span>
                         Team
@@ -127,6 +131,39 @@
                 <div id="view-team" class="view hidden">
                     <h2>Your Team</h2>
                     <div class="placeholder">Team view coming soon. You'll see your colleagues here — both other students in your intake and AI characters.</div>
+                </div>
+
+                <!-- Interview view -->
+                <div id="view-interview" class="view view-interview hidden">
+                    <div id="interview-pre" class="interview-pre">
+                        <!-- Pre-interview state: shown before student starts -->
+                    </div>
+                    <div id="interview-chat" class="interview-chat hidden">
+                        <header class="interview-header">
+                            <div class="interview-manager">
+                                <div class="interview-manager-name" id="interview-manager-name"></div>
+                                <div class="interview-manager-role" id="interview-manager-role"></div>
+                            </div>
+                            <div class="interview-progress">
+                                <span id="interview-turn-indicator">Question 1 of ~10</span>
+                                <button id="interview-end-btn" class="btn btn-secondary">End interview</button>
+                            </div>
+                        </header>
+                        <div class="interview-messages" id="interview-messages">
+                            <!-- Messages get rendered here -->
+                        </div>
+                        <form class="interview-input" id="interview-input-form">
+                            <textarea
+                                id="interview-input"
+                                placeholder="Type your answer..."
+                                rows="3"
+                                required></textarea>
+                            <button type="submit" class="btn btn-primary" id="interview-send-btn">Send</button>
+                        </form>
+                    </div>
+                    <div id="interview-result" class="interview-result hidden">
+                        <!-- Post-completion feedback panel -->
+                    </div>
                 </div>
 
                 <!-- Primer view (iframe in main content area) -->

@@ -135,6 +135,12 @@
             els.jobBoardLink.style.pointerEvents = '';
         }
 
+        // Pass student email to seek.jobs so it can show personalised state
+        // (blocked jobs, application status, pre-fill apply form)
+        if (state.email) {
+            els.jobBoardLink.href = CONFIG.JOBS_URL + '?student=' + encodeURIComponent(state.email);
+        }
+
         // Render the current view
         if (state.currentView === 'dashboard') renderDashboard();
         if (state.currentView === 'inbox-personal') loadInbox('personal');
@@ -227,15 +233,32 @@
         }
         var html = '<div class="app-list">';
         apps.forEach(function (a) {
+            var statusBadge = renderStatusBadge(a);
+            var cardClass = 'app-card app-card-' + (a.status || 'active');
             html +=
-                '<div class="app-card">' +
+                '<div class="' + cardClass + '">' +
                 '<div class="app-card-title">' + escapeHtml(a.job_title) + '</div>' +
                 '<div class="app-card-meta">' + escapeHtml(companyName(a.company_slug)) + '</div>' +
-                '<span class="app-stage">Stage: ' + stageLabel(a.current_stage) + '</span>' +
+                statusBadge +
                 '</div>';
         });
         html += '</div>';
         return html;
+    }
+
+    function renderStatusBadge(app) {
+        var status = app.status || 'active';
+        if (status === 'rejected') {
+            return '<span class="app-stage app-stage-rejected">Rejected at ' +
+                stageLabel(app.current_stage) + ' stage</span>';
+        }
+        if (status === 'hired') {
+            return '<span class="app-stage app-stage-hired">Hired</span>';
+        }
+        if (status === 'completed') {
+            return '<span class="app-stage app-stage-completed">Completed</span>';
+        }
+        return '<span class="app-stage">Stage: ' + stageLabel(app.current_stage) + '</span>';
     }
 
     function companyName(slug) {

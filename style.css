@@ -397,6 +397,21 @@ body {
     font-size: 0.8rem;
     margin-top: 0.5rem;
 }
+.app-stage-rejected {
+    background: rgba(220, 38, 38, 0.08);
+    color: #b91c1c;
+}
+.app-stage-hired {
+    background: rgba(34, 197, 94, 0.1);
+    color: #15803d;
+}
+.app-stage-completed {
+    background: rgba(124, 58, 237, 0.1);
+    color: #6d28d9;
+}
+.app-card-rejected { border-left-color: #b91c1c; opacity: 0.85; }
+.app-card-hired { border-left-color: #15803d; }
+.app-card-completed { border-left-color: #6d28d9; }
 
 /* --- Message list --- */
 .message-list {

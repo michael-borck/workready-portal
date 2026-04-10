@@ -439,8 +439,245 @@
             return;
         }
 
-        // Show the pre-interview state with a "Begin" button
-        renderInterviewPre(app);
+        // Check if booking is enabled by fetching booking state
+        api('/api/v1/interview/' + app.id + '/booking')
+            .then(function (booking) {
+                if (!booking.booking_enabled) {
+                    // Booking disabled — go straight to the pre-interview screen
+                    renderInterviewPre(app);
+                    return;
+                }
+                renderInterviewBookingFlow(app, booking);
+            })
+            .catch(function () {
+                // Fallback: assume booking is disabled
+                renderInterviewPre(app);
+            });
+    }
+
+    function renderInterviewBookingFlow(app, booking) {
+        // Compute which sub-state we're in
+        if (!booking.can_book && booking.missed_count >= booking.max_missed) {
+            renderInterviewIdle(
+                'This application has been closed because you missed too many ' +
+                'scheduled interviews. Apply for another role to try again.'
+            );
+            return;
+        }
+
+        if (!booking.booking) {
+            // No booking yet — show preference form
+            renderBookingPreferences(app, booking);
+            return;
+        }
+
+        // Booking exists — check timing
+        var scheduled = new Date(booking.booking.scheduled_at);
+        var now = new Date();
+        var graceMs = 5 * 60 * 1000;  // server-authoritative; this is just for UI
+        var earliest = new Date(scheduled.getTime() - graceMs);
+        var latest = new Date(scheduled.getTime() + graceMs);
+
+        if (now < earliest) {
+            renderBookingScheduled(app, booking);
+        } else if (now > latest) {
+            // Late — server will reject. Show "you missed it" and offer rebook.
+            // Refresh booking state from server to get latest counter
+            api('/api/v1/interview/' + app.id + '/booking')
+                .then(function (refreshed) {
+                    renderBookingPreferences(app, refreshed, /* missedRecently= */ true);
+                });
+        } else {
+            // Within window — show the pre-interview screen
+            renderInterviewPre(app);
+        }
+    }
+
+    function renderBookingPreferences(app, booking, missedRecently) {
+        els.interviewPre.classList.remove('hidden');
+        els.interviewChat.classList.add('hidden');
+        els.interviewResult.classList.add('hidden');
+
+        var missedNote = '';
+        if (missedRecently) {
+            missedNote =
+                '<div class="booking-missed-note">' +
+                '&#9888; You missed your scheduled appointment. Please book a new time.' +
+                '</div>';
+        }
+
+        var rejectionWarning = '';
+        if (booking.rejection_imminent) {
+            rejectionWarning =
+                '<div class="booking-warning">' +
+                '&#9888; This is your last chance — one more missed appointment ' +
+                'will close your application.' +
+                '</div>';
+        } else if (booking.missed_count > 0) {
+            rejectionWarning =
+                '<div class="booking-info">' +
+                'You have missed ' + booking.missed_count + ' of ' +
+                booking.max_missed + ' allowed appointments.' +
+                '</div>';
+        }
+
+        els.interviewPre.innerHTML =
+            '<h2>Schedule your interview</h2>' +
+            '<p>You\'re interviewing for the <strong>' +
+            escapeHtml(app.job_title) + '</strong> role at ' +
+            escapeHtml(companyName(app.company_slug)) + '. ' +
+            'Tell us when you\'re available and we\'ll show you the matching times.</p>' +
+            missedNote +
+            rejectionWarning +
+            '<form id="booking-prefs-form" class="booking-prefs">' +
+            '<fieldset class="booking-prefs-section">' +
+            '<legend>Days you can do</legend>' +
+            '<div class="booking-day-grid">' +
+            renderDayCheckbox('1', 'Mon', true) +
+            renderDayCheckbox('2', 'Tue', true) +
+            renderDayCheckbox('3', 'Wed', true) +
+            renderDayCheckbox('4', 'Thu', true) +
+            renderDayCheckbox('5', 'Fri', true) +
+            '</div>' +
+            '</fieldset>' +
+            '<fieldset class="booking-prefs-section">' +
+            '<legend>Time of day</legend>' +
+            '<label class="booking-radio"><input type="radio" name="tod" value="any" checked> Either</label>' +
+            '<label class="booking-radio"><input type="radio" name="tod" value="morning"> Morning (before 12pm)</label>' +
+            '<label class="booking-radio"><input type="radio" name="tod" value="afternoon"> Afternoon (12pm onwards)</label>' +
+            '</fieldset>' +
+            '<button type="submit" class="btn btn-primary">Find available times</button>' +
+            '</form>' +
+            '<div id="booking-slots-container"></div>';
+
+        $('booking-prefs-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            loadBookingSlots(app);
+        });
+    }
+
+    function renderDayCheckbox(value, label, checked) {
+        return '<label class="booking-day"><input type="checkbox" name="day" value="' +
+            value + '"' + (checked ? ' checked' : '') + '> ' + label + '</label>';
+    }
+
+    function loadBookingSlots(app) {
+        var form = $('booking-prefs-form');
+        var days = Array.from(form.querySelectorAll('input[name="day"]:checked'))
+            .map(function (el) { return el.value; }).join(',');
+        var tod = form.querySelector('input[name="tod"]:checked').value;
+
+        var container = $('booking-slots-container');
+        container.innerHTML = '<p class="placeholder">Finding times...</p>';
+
+        if (!days) {
+            container.innerHTML = '<p class="booking-error">Please select at least one day.</p>';
+            return;
+        }
+
+        api('/api/v1/interview/' + app.id + '/slots?days=' + days + '&time_of_day=' + tod)
+            .then(function (data) {
+                if (!data.slots || data.slots.length === 0) {
+                    container.innerHTML =
+                        '<p class="booking-error">No times match those preferences. ' +
+                        'Try selecting more days or a different time of day.</p>';
+                    return;
+                }
+                var html =
+                    '<h3>Available times</h3>' +
+                    '<p class="booking-tz">Times shown in ' + escapeHtml(data.timezone) +
+                    ' (' + escapeHtml(data.business_hours) + ')</p>' +
+                    '<div class="booking-slot-list">';
+                data.slots.forEach(function (slot) {
+                    html += '<button class="booking-slot-btn" data-slot="' +
+                        escapeHtml(slot.scheduled_at) + '">' +
+                        escapeHtml(slot.local_display) + '</button>';
+                });
+                html += '</div>';
+                container.innerHTML = html;
+                container.querySelectorAll('.booking-slot-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        confirmBooking(app, btn.getAttribute('data-slot'));
+                    });
+                });
+            })
+            .catch(function () {
+                container.innerHTML = '<p class="booking-error">Failed to load times. Try again.</p>';
+            });
+    }
+
+    function confirmBooking(app, scheduledAt) {
+        // Disable all slot buttons during the request
+        document.querySelectorAll('.booking-slot-btn').forEach(function (b) {
+            b.disabled = true;
+        });
+        fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/book', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scheduled_at: scheduledAt }),
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Booking failed');
+                return r.json();
+            })
+            .then(function () {
+                loadStudentState();
+                loadInterview();  // re-render with the new booking
+            })
+            .catch(function (err) {
+                alert('Failed to book: ' + err.message);
+                document.querySelectorAll('.booking-slot-btn').forEach(function (b) {
+                    b.disabled = false;
+                });
+            });
+    }
+
+    function renderBookingScheduled(app, booking) {
+        els.interviewPre.classList.remove('hidden');
+        els.interviewChat.classList.add('hidden');
+        els.interviewResult.classList.add('hidden');
+
+        var scheduled = new Date(booking.booking.scheduled_at);
+        var nice = scheduled.toLocaleString('en-AU', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+        });
+
+        var practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
+            encodeURIComponent(app.company_slug) + '/' +
+            encodeURIComponent(app.job_slug) + '/practice-script';
+
+        els.interviewPre.innerHTML =
+            '<h2>Your interview is scheduled</h2>' +
+            '<div class="booking-confirmed">' +
+            '<div class="booking-when">&#128197; ' + escapeHtml(nice) + '</div>' +
+            '<div class="booking-with">with ' +
+            escapeHtml(state.student.active_application.job_title) + ' hiring manager at ' +
+            escapeHtml(companyName(app.company_slug)) + '</div>' +
+            '</div>' +
+            '<p>Please log back in a few minutes before your scheduled time and ' +
+            'click <strong>Begin Interview</strong> from this page. Arriving more ' +
+            'than 5 minutes late will forfeit the slot.</p>' +
+            '<p>You can use the time before your interview to practise — download ' +
+            'a practice script and rehearse with Talk Buddy or any AI chat tool.</p>' +
+            '<div class="action-buttons">' +
+            '<a href="' + practiceUrl + '" download class="btn btn-primary">' +
+            '&#128221; Download practice script</a>' +
+            '<button id="booking-cancel-btn" class="btn btn-secondary">Reschedule</button>' +
+            '</div>';
+
+        $('booking-cancel-btn').addEventListener('click', function () {
+            if (!confirm('Cancel your appointment and pick a new time?')) return;
+            fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/cancel-booking', {
+                method: 'POST',
+            })
+                .then(function (r) { return r.json(); })
+                .then(function () { loadInterview(); });
+        });
     }
 
     function renderInterviewIdle(message) {

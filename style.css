@@ -337,6 +337,27 @@ body {
 }
 .sidebar-link:hover { background: var(--sim-bg); }
 
+.sidebar-blurb {
+    padding: 0.4rem 0.8rem 0;
+    font-size: 0.78rem;
+    color: var(--sim-muted);
+    line-height: 1.4;
+}
+
+.practice-blurb {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--sim-bg);
+    border-left: 3px solid var(--sim-accent);
+    border-radius: var(--sim-radius);
+    font-size: 0.9rem;
+    color: var(--sim-text);
+}
+.practice-blurb a {
+    color: var(--sim-primary);
+    text-decoration: underline;
+}
+
 /* --- Content --- */
 .content {
     background: var(--sim-white);

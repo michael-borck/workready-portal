@@ -7,6 +7,7 @@ window.WORKREADY_CONFIG = {
     // External links
     PRIMER_URL: 'https://primer.eduserver.au/',
     JOBS_URL: 'https://seekjobs.eduserver.au/',
+    TALK_BUDDY_URL: 'https://github.com/michael-borck/talk-buddy/releases',
 
     // Company sites — used to link to the assigned company's intranet
     COMPANY_URLS: {

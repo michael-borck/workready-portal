@@ -455,6 +455,9 @@
         els.interviewPre.classList.remove('hidden');
         els.interviewChat.classList.add('hidden');
         els.interviewResult.classList.add('hidden');
+        var practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
+            encodeURIComponent(app.company_slug) + '/' +
+            encodeURIComponent(app.job_slug) + '/practice-script';
         els.interviewPre.innerHTML =
             '<h2>Ready to interview?</h2>' +
             '<p>You\'re about to interview for the <strong>' +
@@ -463,10 +466,17 @@
             '<p>The interview will be a conversation with the hiring manager. ' +
             'Take your time, think through your answers, and stay in the moment. ' +
             'There are roughly 10 questions and the interview should take about 15 minutes.</p>' +
-            '<p><strong>This is a safe space to practice.</strong> If it doesn\'t go well, ' +
+            '<p><strong>This is a safe space to practise.</strong> If it doesn\'t go well, ' +
             'you\'ll get feedback to learn from and can apply to other roles.</p>' +
+            '<div class="action-buttons">' +
             '<button id="interview-begin-btn" class="btn btn-primary btn-cta">' +
-            'Begin Interview</button>';
+            'Begin Interview</button>' +
+            '<a href="' + practiceUrl + '" download class="btn btn-secondary">' +
+            '&#128221; Download practice script</a>' +
+            '</div>' +
+            '<p class="practice-blurb">Want to rehearse first? Download the practice script ' +
+            'and use it with <a href="' + escapeHtml(CONFIG.TALK_BUDDY_URL) + '" target="_blank">Talk Buddy</a> ' +
+            'or any AI chat tool to practise as many times as you like.</p>';
         $('interview-begin-btn').addEventListener('click', startInterview);
     }
 
@@ -646,12 +656,25 @@
         var passed = fb.proceed === true;
         var feedback = fb.feedback || {};
 
+        // Pull company/job info from the session for the practice script link
+        var app = state.student && state.student.applications
+            ? state.student.applications.find(function (a) {
+                return a.id === session.application_id;
+            })
+            : null;
+        var practiceUrl = '';
+        if (app) {
+            practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
+                encodeURIComponent(app.company_slug) + '/' +
+                encodeURIComponent(app.job_slug) + '/practice-script';
+        }
+
         var html =
             '<h2>' + (passed
                 ? 'You\'re moving forward'
                 : 'Interview complete') + '</h2>' +
             '<p class="interview-result-summary">' +
-            (fb.summary || '') + '</p>' +
+            escapeHtml(fb.summary || '') + '</p>' +
             '<div class="interview-result-score">' +
             'Overall: <strong>' + (session.final_score || 0) + '/100</strong></div>' +
             renderFeedbackSection('What worked well', feedback.strengths) +
@@ -661,7 +684,20 @@
                 escapeHtml(feedback.tailoring) + '</p>' : '') +
             '<div class="action-buttons">' +
             '<button id="interview-back-btn" class="btn btn-primary">Back to dashboard</button>' +
-            '</div>';
+            (practiceUrl
+                ? '<a href="' + practiceUrl + '" download class="btn btn-secondary">' +
+                  '&#128221; Download practice script</a>'
+                : '') +
+            '</div>' +
+            (practiceUrl
+                ? '<p class="practice-blurb">' +
+                  (passed
+                      ? 'Want to keep practising? Download a practice script for similar roles.'
+                      : 'Want to do better next time? Download a practice script and use it with ' +
+                        '<a href="' + escapeHtml(CONFIG.TALK_BUDDY_URL) + '" target="_blank">Talk Buddy</a> ' +
+                        'or any AI chat tool to rehearse before applying again.') +
+                  '</p>'
+                : '');
         els.interviewResult.innerHTML = html;
         $('interview-back-btn').addEventListener('click', function () {
             switchView('dashboard');

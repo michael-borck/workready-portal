@@ -650,6 +650,25 @@
         var practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
             encodeURIComponent(app.company_slug) + '/' +
             encodeURIComponent(app.job_slug) + '/practice-script';
+        var icsUrl = CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/booking.ics';
+
+        // Reschedule info
+        var rescheduleSection = '';
+        if (booking.can_reschedule) {
+            var remaining = booking.max_reschedules - booking.reschedule_count;
+            var remainingText = booking.max_reschedules > 0
+                ? ' (' + remaining + ' remaining)'
+                : '';
+            rescheduleSection =
+                '<button id="booking-cancel-btn" class="btn btn-secondary">' +
+                'Reschedule' + remainingText + '</button>';
+        } else {
+            rescheduleSection =
+                '<div class="booking-final-note">' +
+                '&#128274; This booking is final — you have used all your ' +
+                'reschedules for this interview.' +
+                '</div>';
+        }
 
         els.interviewPre.innerHTML =
             '<h2>Your interview is scheduled</h2>' +
@@ -667,17 +686,32 @@
             '<div class="action-buttons">' +
             '<a href="' + practiceUrl + '" download class="btn btn-primary">' +
             '&#128221; Download practice script</a>' +
-            '<button id="booking-cancel-btn" class="btn btn-secondary">Reschedule</button>' +
+            '<a href="' + icsUrl + '" download class="btn btn-secondary">' +
+            '&#128197; Add to calendar</a>' +
+            rescheduleSection +
             '</div>';
 
-        $('booking-cancel-btn').addEventListener('click', function () {
-            if (!confirm('Cancel your appointment and pick a new time?')) return;
-            fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/cancel-booking', {
-                method: 'POST',
-            })
-                .then(function (r) { return r.json(); })
-                .then(function () { loadInterview(); });
-        });
+        var cancelBtn = $('booking-cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+                if (!confirm('Cancel your appointment and pick a new time? This will use one of your reschedules.')) return;
+                fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/cancel-booking', {
+                    method: 'POST',
+                })
+                    .then(function (r) {
+                        if (!r.ok) {
+                            return r.json().then(function (j) {
+                                throw new Error(j.detail || 'Reschedule failed');
+                            });
+                        }
+                        return r.json();
+                    })
+                    .then(function () { loadInterview(); })
+                    .catch(function (err) {
+                        alert(err.message);
+                    });
+            });
+        }
     }
 
     function renderInterviewIdle(message) {

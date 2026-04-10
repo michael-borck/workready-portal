@@ -846,6 +846,17 @@ body {
     align-self: center;
 }
 
+.booking-tz-note {
+    font-size: 0.85rem;
+    color: var(--sim-muted);
+    font-style: italic;
+    padding: 0.5rem 0.75rem;
+    background: var(--sim-bg);
+    border-left: 3px solid var(--sim-accent);
+    border-radius: var(--sim-radius);
+    margin: 1rem 0;
+}
+
 .booking-confirmed {
     background: rgba(34, 197, 94, 0.08);
     border-left: 4px solid #15803d;

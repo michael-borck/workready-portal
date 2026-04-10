@@ -4,12 +4,52 @@
     'use strict';
 
     var CONFIG = window.WORKREADY_CONFIG;
+
+    // --- Timezone handling ---
+    // Detect the student's browser timezone once on load. Business hours
+    // on the API side are still in Perth (the company's timezone), but
+    // appointment times displayed to the student are converted to their
+    // local timezone so "Monday 10am" isn't confusing for a student in
+    // Brisbane (+2h) or Sydney (+3h).
+    function detectTimezone() {
+        var saved = localStorage.getItem('workready_tz');
+        if (saved) return saved;
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch (e) {
+            return 'Australia/Perth';
+        }
+    }
+
     var state = {
         email: null,
         student: null,
         currentView: 'dashboard',
         interview: null,  // active interview session, when in the chat
+        timezone: detectTimezone(),
     };
+
+    function formatInTimezone(isoString, options) {
+        options = options || {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZoneName: 'short',
+        };
+        options.timeZone = state.timezone;
+        try {
+            return new Date(isoString).toLocaleString('en-AU', options);
+        } catch (e) {
+            return isoString;
+        }
+    }
+
+    function isLocalTzPerth() {
+        return state.timezone === 'Australia/Perth';
+    }
 
     // --- Element references ---
     var $ = function (id) { return document.getElementById(id); };
@@ -583,15 +623,35 @@
                         'Try selecting more days or a different time of day.</p>';
                     return;
                 }
+
+                // Show times in the student's local timezone, with a note
+                // about the company's business hours in Perth
+                var tzNote;
+                if (isLocalTzPerth()) {
+                    tzNote = 'Times shown in ' + escapeHtml(data.timezone) +
+                        ' (' + escapeHtml(data.business_hours) + ')';
+                } else {
+                    tzNote = 'Times shown in your timezone (' +
+                        escapeHtml(state.timezone) + '). Business hours are ' +
+                        escapeHtml(data.business_hours) + ' Perth time.';
+                }
+
                 var html =
                     '<h3>Available times</h3>' +
-                    '<p class="booking-tz">Times shown in ' + escapeHtml(data.timezone) +
-                    ' (' + escapeHtml(data.business_hours) + ')</p>' +
+                    '<p class="booking-tz">' + tzNote + '</p>' +
                     '<div class="booking-slot-list">';
                 data.slots.forEach(function (slot) {
+                    var display = formatInTimezone(slot.scheduled_at, {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                    });
                     html += '<button class="booking-slot-btn" data-slot="' +
                         escapeHtml(slot.scheduled_at) + '">' +
-                        escapeHtml(slot.local_display) + '</button>';
+                        escapeHtml(display) + '</button>';
                 });
                 html += '</div>';
                 container.innerHTML = html;
@@ -637,15 +697,12 @@
         els.interviewChat.classList.add('hidden');
         els.interviewResult.classList.add('hidden');
 
-        var scheduled = new Date(booking.booking.scheduled_at);
-        var nice = scheduled.toLocaleString('en-AU', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-        });
+        var nice = formatInTimezone(booking.booking.scheduled_at);
+        var tzHint = isLocalTzPerth()
+            ? ''
+            : '<div class="booking-tz-note">Times shown in your timezone (' +
+              escapeHtml(state.timezone) + '). Business hours are in ' +
+              'Perth (Australia/Perth).</div>';
 
         var practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
             encodeURIComponent(app.company_slug) + '/' +
@@ -678,6 +735,7 @@
             escapeHtml(state.student.active_application.job_title) + ' hiring manager at ' +
             escapeHtml(companyName(app.company_slug)) + '</div>' +
             '</div>' +
+            tzHint +
             '<p>Please log back in a few minutes before your scheduled time and ' +
             'click <strong>Begin Interview</strong> from this page. Arriving more ' +
             'than 5 minutes late will forfeit the slot.</p>' +

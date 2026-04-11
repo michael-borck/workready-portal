@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkReady Admin / Debug</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg: #0c1220;
+            --bg-2: #14192a;
+            --bg-3: #1f2638;
+            --line: #2a3148;
+            --line-2: #3d4666;
+            --text: #e8eaf2;
+            --text-muted: #9ca3b9;
+            --text-dim: #6b7390;
+            --accent: #fb6a3a;
+            --accent-soft: #3d2418;
+            --primary: #5b8def;
+            --primary-soft: #1c2942;
+            --success: #4ade80;
+            --warn: #fbbf24;
+            --danger: #f87171;
+            --completed: #c084fc;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            font-feature-settings: "kern", "liga", "tnum";
+            font-variant-numeric: tabular-nums;
+        }
+        h1, h2, h3 { font-weight: 700; letter-spacing: -0.02em; }
+        h1 { font-size: 1.4rem; }
+        h2 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent); }
+        h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 0.5rem; }
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { color: var(--accent); }
+
+        .topbar {
+            background: var(--bg-2);
+            border-bottom: 1px solid var(--line);
+            padding: 0.85rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: -0.02em;
+        }
+        .topbar-brand .badge {
+            background: var(--accent);
+            color: var(--bg);
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .topbar-brand a { color: var(--text-dim); font-weight: 500; font-size: 0.85rem; text-decoration: underline; }
+
+        .topbar-token {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .topbar-token input {
+            background: var(--bg-3);
+            border: 1px solid var(--line-2);
+            color: var(--text);
+            padding: 0.4rem 0.7rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            min-width: 280px;
+        }
+        .topbar-token input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .token-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            font-size: 0.78rem;
+        }
+        .token-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+        .token-status.ok { color: var(--success); }
+        .token-status.ok::before { background: var(--success); }
+        .token-status.bad { color: var(--danger); }
+        .token-status.bad::before { background: var(--danger); }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            min-height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            background: var(--bg-2);
+            border-right: 1px solid var(--line);
+            padding: 1.25rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 60px);
+            position: sticky;
+            top: 60px;
+        }
+
+        .main {
+            padding: 1.5rem 2rem;
+            overflow-x: hidden;
+        }
+
+        .student-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .student-row {
+            background: var(--bg-3);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--text-dim);
+            border-radius: 4px;
+            padding: 0.75rem 0.85rem;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .student-row:hover {
+            border-color: var(--line-2);
+            background: var(--primary-soft);
+        }
+        .student-row.selected {
+            border-left-color: var(--accent);
+            background: var(--primary-soft);
+        }
+        .student-row-email {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--text);
+            font-weight: 600;
+            word-break: break-all;
+        }
+        .student-row-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.35rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .state-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: var(--bg);
+            border: 1px solid var(--line);
+            color: var(--text-dim);
+        }
+        .state-pill::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .state-pill.s-not_applied { color: var(--text-dim); }
+        .state-pill.s-applied { color: var(--primary); border-color: var(--primary); }
+        .state-pill.s-hired { color: var(--success); border-color: var(--success); }
+        .state-pill.s-completed { color: var(--completed); border-color: var(--completed); }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 0.5rem;
+            margin: 0.75rem 0;
+        }
+        input[type="email"],
+        input[type="text"],
+        select,
+        textarea {
+            background: var(--bg-3);
+            border: 1px solid var(--line-2);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            flex: 1;
+            min-width: 0;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        button {
+            background: var(--bg-3);
+            border: 1px solid var(--line-2);
+            color: var(--text);
+            padding: 0.5rem 0.85rem;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s;
+            white-space: nowrap;
+        }
+        button:hover { border-color: var(--accent); color: var(--accent); }
+        button.primary { background: var(--primary); border-color: var(--primary); color: white; }
+        button.primary:hover { background: var(--accent); border-color: var(--accent); color: white; }
+        button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+        button.danger:hover { background: var(--danger); color: var(--bg); }
+        button.warn { border-color: var(--warn); color: var(--warn); }
+        button.warn:hover { background: var(--warn); color: var(--bg); }
+        button.success { border-color: var(--success); color: var(--success); }
+        button.success:hover { background: var(--success); color: var(--bg); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .panel {
+            background: var(--bg-2);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            gap: 1rem;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .kvs {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        .kvs dt {
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            padding-top: 2px;
+        }
+        .kvs dd {
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            word-break: break-all;
+        }
+
+        .app-card {
+            background: var(--bg-3);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .app-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+        .app-card-title {
+            font-weight: 700;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .app-card-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+        .stage-tag {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            padding: 1px 6px;
+            border: 1px solid var(--line-2);
+            border-radius: 3px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-right: 4px;
+        }
+        .stage-tag.active { color: var(--success); border-color: var(--success); }
+        .stage-tag.rejected { color: var(--danger); border-color: var(--danger); }
+        .stage-tag.completed { color: var(--completed); border-color: var(--completed); }
+        .stage-tag.hired { color: var(--success); border-color: var(--success); }
+        .app-actions {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .app-actions button {
+            font-size: 0.72rem;
+            padding: 0.35rem 0.65rem;
+        }
+
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .msg-row {
+            background: var(--bg-3);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--line-2);
+            border-radius: 3px;
+            padding: 0.6rem 0.85rem;
+            font-size: 0.82rem;
+        }
+        .msg-row.unread { border-left-color: var(--accent); }
+        .msg-row.pending { opacity: 0.55; border-left-style: dashed; }
+        .msg-row-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .msg-row-sender {
+            font-weight: 600;
+            color: var(--text);
+        }
+        .msg-row-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+        .msg-row-subject {
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .json-block {
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            overflow-x: auto;
+            max-height: 360px;
+            white-space: pre;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: var(--bg-3);
+            border: 1px solid var(--line-2);
+            border-left: 4px solid var(--accent);
+            padding: 0.85rem 1.15rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            max-width: 380px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.15s, transform 0.15s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.success { border-left-color: var(--success); }
+
+        details > summary {
+            cursor: pointer;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        details > summary:hover { color: var(--accent); }
+        details[open] > summary { color: var(--accent); margin-bottom: 0.5rem; }
+
+        .placeholder {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { position: static; max-height: none; }
+            .topbar { flex-direction: column; align-items: stretch; }
+            .topbar-token input { min-width: 0; flex: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-brand">
+            <span>WorkReady <span class="badge">Admin</span></span>
+            <a href="/">← back to portal</a>
+        </div>
+        <div class="topbar-token">
+            <span>API:</span>
+            <input type="text" id="api-base" placeholder="https://workready-api.eduserver.au">
+            <span>Token:</span>
+            <input type="password" id="admin-token" placeholder="WORKREADY_ADMIN_TOKEN">
+            <button id="save-token" class="primary">Save</button>
+            <span id="token-status" class="token-status">unverified</span>
+        </div>
+    </div>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="panel-header">
+                <h2>Students</h2>
+                <button id="refresh-students">Refresh</button>
+            </div>
+
+            <div class="form-row">
+                <input type="email" id="new-student-email" placeholder="new-student@curtin.edu.au">
+                <button id="create-student" class="primary">Create</button>
+            </div>
+
+            <div id="student-list" class="student-list">
+                <div class="empty-state">Connect a token to load students.</div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div id="detail-pane">
+                <div class="placeholder">
+                    Select a student from the left to inspect or manipulate their state.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            // ============================================================
+            // Config — token + API base in sessionStorage so it persists
+            // ============================================================
+            var DEFAULT_API_BASE =
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:8000'
+                    : 'https://workready-api.eduserver.au';
+
+            var apiBase = sessionStorage.getItem('wr_admin_api_base') || DEFAULT_API_BASE;
+            var token = sessionStorage.getItem('wr_admin_token') || '';
+
+            var $ = function (id) { return document.getElementById(id); };
+            var els = {
+                apiBase: $('api-base'),
+                token: $('admin-token'),
+                save: $('save-token'),
+                status: $('token-status'),
+                students: $('student-list'),
+                refresh: $('refresh-students'),
+                createBtn: $('create-student'),
+                newEmail: $('new-student-email'),
+                detail: $('detail-pane'),
+                toast: $('toast'),
+            };
+
+            els.apiBase.value = apiBase;
+            els.token.value = token;
+
+            var state = {
+                students: [],
+                jobs: [],
+                selectedEmail: null,
+            };
+
+            // ============================================================
+            // API helpers
+            // ============================================================
+            function api(method, path, body) {
+                if (!token) {
+                    showToast('Enter an admin token first', 'error');
+                    return Promise.reject(new Error('No token'));
+                }
+                var opts = {
+                    method: method,
+                    headers: { 'Authorization': 'Bearer ' + token },
+                };
+                if (body) {
+                    opts.headers['Content-Type'] = 'application/json';
+                    opts.body = JSON.stringify(body);
+                }
+                return fetch(apiBase + path, opts).then(function (r) {
+                    if (!r.ok) {
+                        return r.json().then(function (j) {
+                            throw new Error(j.detail || ('HTTP ' + r.status));
+                        }, function () { throw new Error('HTTP ' + r.status); });
+                    }
+                    return r.json();
+                });
+            }
+
+            function showToast(msg, kind) {
+                els.toast.textContent = msg;
+                els.toast.className = 'toast show ' + (kind || '');
+                setTimeout(function () {
+                    els.toast.className = 'toast ' + (kind || '');
+                }, 3500);
+            }
+
+            function escapeHtml(s) {
+                if (s == null) return '';
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function formatDate(iso) {
+                if (!iso) return '—';
+                try {
+                    var d = new Date(iso);
+                    return d.toLocaleString('en-AU', {
+                        year: 'numeric', month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                } catch (e) { return iso; }
+            }
+
+            // ============================================================
+            // Token / connection
+            // ============================================================
+            function verifyToken() {
+                return api('GET', '/api/v1/admin/health')
+                    .then(function () {
+                        els.status.textContent = 'connected';
+                        els.status.className = 'token-status ok';
+                        return true;
+                    })
+                    .catch(function (err) {
+                        els.status.textContent = err.message || 'failed';
+                        els.status.className = 'token-status bad';
+                        return false;
+                    });
+            }
+
+            els.save.addEventListener('click', function () {
+                token = els.token.value.trim();
+                apiBase = els.apiBase.value.trim().replace(/\/$/, '');
+                sessionStorage.setItem('wr_admin_token', token);
+                sessionStorage.setItem('wr_admin_api_base', apiBase);
+                verifyToken().then(function (ok) {
+                    if (ok) {
+                        showToast('Token verified', 'success');
+                        loadStudents();
+                        loadJobs();
+                    }
+                });
+            });
+
+            // ============================================================
+            // Students list
+            // ============================================================
+            function loadStudents() {
+                return api('GET', '/api/v1/admin/students').then(function (data) {
+                    state.students = data.students || [];
+                    renderStudents();
+                }).catch(function (err) {
+                    els.students.innerHTML =
+                        '<div class="empty-state">Could not load students: ' + escapeHtml(err.message) + '</div>';
+                });
+            }
+
+            function renderStudents() {
+                if (!state.students.length) {
+                    els.students.innerHTML = '<div class="empty-state">No students yet. Create one above.</div>';
+                    return;
+                }
+                var html = '';
+                state.students.forEach(function (s) {
+                    var stateKey = s.state.split(':')[0].toLowerCase();
+                    var stateLabel = s.state.replace(':', ' / ').toLowerCase();
+                    var sel = state.selectedEmail === s.email ? ' selected' : '';
+                    html +=
+                        '<div class="student-row' + sel + '" data-email="' + escapeHtml(s.email) + '">' +
+                        '<div class="student-row-email">' + escapeHtml(s.email) + '</div>' +
+                        '<div class="student-row-meta">' +
+                        '<span class="state-pill s-' + stateKey + '">' + escapeHtml(stateLabel) + '</span>' +
+                        '<span>' + s.application_count + ' apps · ' +
+                        (s.unread_personal + s.unread_work) + ' unread</span>' +
+                        '</div>' +
+                        '</div>';
+                });
+                els.students.innerHTML = html;
+                els.students.querySelectorAll('[data-email]').forEach(function (row) {
+                    row.addEventListener('click', function () {
+                        selectStudent(row.getAttribute('data-email'));
+                    });
+                });
+            }
+
+            // ============================================================
+            // Jobs cache (for the force-state dropdown)
+            // ============================================================
+            function loadJobs() {
+                return api('GET', '/api/v1/admin/jobs').then(function (data) {
+                    state.jobs = data.jobs || [];
+                });
+            }
+
+            // ============================================================
+            // Student detail
+            // ============================================================
+            function selectStudent(email) {
+                state.selectedEmail = email;
+                renderStudents();
+                loadDetail(email);
+            }
+
+            function loadDetail(email) {
+                els.detail.innerHTML = '<div class="placeholder">Loading…</div>';
+                api('GET', '/api/v1/admin/students/' + encodeURIComponent(email))
+                    .then(renderDetail)
+                    .catch(function (err) {
+                        els.detail.innerHTML =
+                            '<div class="placeholder">Failed to load: ' + escapeHtml(err.message) + '</div>';
+                    });
+            }
+
+            function renderDetail(dump) {
+                var s = dump.student;
+                var html = '';
+
+                // Identity panel
+                html += '<div class="panel">';
+                html += '<div class="panel-header">';
+                html += '<h2>' + escapeHtml(s.email) + '</h2>';
+                html += '<div>';
+                html += '<button class="warn" data-action="reset">Reset</button> ';
+                html += '<button class="danger" data-action="delete">Delete</button>';
+                html += '</div>';
+                html += '</div>';
+                html += '<dl class="kvs">';
+                html += '<dt>Student ID</dt><dd>' + s.id + '</dd>';
+                html += '<dt>Name</dt><dd>' + escapeHtml(s.name) + '</dd>';
+                html += '<dt>Created</dt><dd>' + formatDate(s.created_at) + '</dd>';
+                html += '<dt>Pending msgs</dt><dd>' + dump.messages.pending_count + '</dd>';
+                html += '</dl>';
+                html += '</div>';
+
+                // Force state panel
+                html += '<div class="panel">';
+                html += '<h2>Force state</h2>';
+                html += '<p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 0.5rem;">' +
+                    'Creates a fresh application at the chosen stage. Existing active applications will be marked rejected.' +
+                    '</p>';
+                html += '<div class="form-row">';
+                html += '<select id="force-state-job">';
+                html += '<option value="">— select role —</option>';
+                state.jobs.forEach(function (j) {
+                    html += '<option value="' + escapeHtml(j.company_slug + '|' + j.job_slug) + '">' +
+                        escapeHtml(j.company_name) + ' — ' + escapeHtml(j.job_title) + '</option>';
+                });
+                html += '</select>';
+                html += '<select id="force-state-target">';
+                html += '<option value="APPLIED">APPLIED (resume submitted)</option>';
+                html += '<option value="HIRED:interview">HIRED · interview</option>';
+                html += '<option value="HIRED:work_task">HIRED · work_task</option>';
+                html += '<option value="HIRED:lunchroom">HIRED · lunchroom</option>';
+                html += '<option value="HIRED:exit_interview">HIRED · exit_interview</option>';
+                html += '<option value="COMPLETED">COMPLETED</option>';
+                html += '</select>';
+                html += '<button class="primary" data-action="force-state">Apply</button>';
+                html += '</div>';
+                html += '</div>';
+
+                // Quick actions
+                html += '<div class="panel">';
+                html += '<h2>Quick actions</h2>';
+                html += '<div class="actions-grid">';
+                html += '<button data-action="deliver-pending">Flush pending msgs</button>';
+                html += '<button data-action="add-note">Inject test message</button>';
+                html += '</div>';
+                html += '</div>';
+
+                // Applications
+                html += '<div class="panel">';
+                html += '<h2>Applications (' + dump.applications.length + ')</h2>';
+                if (!dump.applications.length) {
+                    html += '<div class="empty-state">No applications yet.</div>';
+                } else {
+                    dump.applications.forEach(function (app) {
+                        html += renderAppCard(app);
+                    });
+                }
+                html += '</div>';
+
+                // Inboxes
+                html += '<div class="panel">';
+                html += '<h2>Personal inbox (' + dump.messages.personal.length + ')</h2>';
+                html += renderMessages(dump.messages.personal);
+                html += '</div>';
+
+                if (dump.messages.work.length) {
+                    html += '<div class="panel">';
+                    html += '<h2>Work inbox (' + dump.messages.work.length + ')</h2>';
+                    html += renderMessages(dump.messages.work);
+                    html += '</div>';
+                }
+
+                // Raw JSON
+                html += '<div class="panel">';
+                html += '<details>';
+                html += '<summary>Raw JSON dump</summary>';
+                html += '<pre class="json-block">' + escapeHtml(JSON.stringify(dump, null, 2)) + '</pre>';
+                html += '</details>';
+                html += '</div>';
+
+                els.detail.innerHTML = html;
+                bindDetailActions(s.email);
+            }
+
+            function renderAppCard(app) {
+                var statusClass = ' ' + app.status;
+                var html = '<div class="app-card">';
+                html += '<div class="app-card-head">';
+                html += '<div>';
+                html += '<div class="app-card-title">' + escapeHtml(app.job_title) + '</div>';
+                html += '<div class="app-card-meta">' + escapeHtml(app.company_slug) + ' · cycle ' + app.cycle + '</div>';
+                html += '</div>';
+                html += '<div>';
+                html += '<span class="stage-tag">' + escapeHtml(app.current_stage) + '</span>';
+                html += '<span class="stage-tag' + statusClass + '">' + escapeHtml(app.status) + '</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '<div class="app-card-meta">';
+                html += 'id ' + app.id + ' · missed ' + app.missed_interviews + ' · resched ' + app.reschedule_count;
+                html += ' · updated ' + formatDate(app.updated_at);
+                html += '</div>';
+                html += '<div class="app-actions">';
+                html += '<button class="success" data-app-action="resume_pass" data-app-id="' + app.id + '">Force resume PASS</button>';
+                html += '<button class="danger" data-app-action="resume_fail" data-app-id="' + app.id + '">Force resume FAIL</button>';
+                html += '<button class="success" data-app-action="interview_pass" data-app-id="' + app.id + '">Force interview PASS</button>';
+                html += '<button class="danger" data-app-action="interview_fail" data-app-id="' + app.id + '">Force interview FAIL</button>';
+                html += '</div>';
+
+                if (app.bookings && app.bookings.length) {
+                    html += '<details style="margin-top: 0.5rem;">';
+                    html += '<summary>Bookings (' + app.bookings.length + ')</summary>';
+                    app.bookings.forEach(function (b) {
+                        html += '<div class="msg-row" style="margin-top: 0.35rem;">' +
+                            '<span class="stage-tag">' + b.status + '</span> ' +
+                            formatDate(b.scheduled_at) +
+                            '</div>';
+                    });
+                    html += '</details>';
+                }
+
+                if (app.interview_sessions && app.interview_sessions.length) {
+                    html += '<details style="margin-top: 0.5rem;">';
+                    html += '<summary>Interview sessions (' + app.interview_sessions.length + ')</summary>';
+                    app.interview_sessions.forEach(function (sess) {
+                        html += '<div class="msg-row" style="margin-top: 0.35rem;">' +
+                            '<span class="stage-tag">' + sess.status + '</span> ' +
+                            'with ' + escapeHtml(sess.manager_name) +
+                            (sess.final_score != null ? ' · score ' + sess.final_score : '') +
+                            '</div>';
+                    });
+                    html += '</details>';
+                }
+
+                html += '</div>';
+                return html;
+            }
+
+            function renderMessages(msgs) {
+                if (!msgs.length) {
+                    return '<div class="empty-state">Empty.</div>';
+                }
+                var now = new Date().toISOString();
+                var html = '<div class="messages">';
+                msgs.forEach(function (m) {
+                    var classes = 'msg-row';
+                    if (!m.is_read) classes += ' unread';
+                    if (m.deliver_at > now) classes += ' pending';
+                    html += '<div class="' + classes + '">';
+                    html += '<div class="msg-row-head">';
+                    html += '<span class="msg-row-sender">' + escapeHtml(m.sender_name) + '</span>';
+                    html += '<span class="msg-row-time">' + formatDate(m.deliver_at) + '</span>';
+                    html += '</div>';
+                    html += '<div class="msg-row-subject">' + escapeHtml(m.subject) + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                return html;
+            }
+
+            // ============================================================
+            // Detail action wiring
+            // ============================================================
+            function bindDetailActions(email) {
+                els.detail.querySelectorAll('[data-action]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var action = btn.getAttribute('data-action');
+                        handleAction(action, email);
+                    });
+                });
+                els.detail.querySelectorAll('[data-app-action]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var outcome = btn.getAttribute('data-app-action');
+                        var appId = btn.getAttribute('data-app-id');
+                        api('POST', '/api/v1/admin/applications/' + appId + '/outcome',
+                            { outcome: outcome })
+                            .then(function () {
+                                showToast('Outcome forced: ' + outcome, 'success');
+                                refreshAfterChange(email);
+                            })
+                            .catch(function (err) { showToast(err.message, 'error'); });
+                    });
+                });
+            }
+
+            function handleAction(action, email) {
+                if (action === 'reset') {
+                    if (!confirm('Reset all applications, messages, bookings for ' + email + '?')) return;
+                    api('POST', '/api/v1/admin/students/' + encodeURIComponent(email) + '/reset')
+                        .then(function (r) {
+                            showToast('Reset — removed ' + r.applications_removed + ' applications', 'success');
+                            refreshAfterChange(email);
+                        })
+                        .catch(function (err) { showToast(err.message, 'error'); });
+                } else if (action === 'delete') {
+                    if (!confirm('Permanently delete ' + email + ' and all data?')) return;
+                    api('DELETE', '/api/v1/admin/students/' + encodeURIComponent(email))
+                        .then(function () {
+                            showToast('Deleted ' + email, 'success');
+                            state.selectedEmail = null;
+                            els.detail.innerHTML = '<div class="placeholder">Select a student.</div>';
+                            loadStudents();
+                        })
+                        .catch(function (err) { showToast(err.message, 'error'); });
+                } else if (action === 'force-state') {
+                    var jobVal = $('force-state-job').value;
+                    var target = $('force-state-target').value;
+                    if (!jobVal) { showToast('Pick a role first', 'error'); return; }
+                    var parts = jobVal.split('|');
+                    api('POST', '/api/v1/admin/students/' + encodeURIComponent(email) + '/state', {
+                        state: target,
+                        company_slug: parts[0],
+                        job_slug: parts[1],
+                    }).then(function (r) {
+                        showToast('Forced to ' + target + ' (app #' + r.application_id + ')', 'success');
+                        refreshAfterChange(email);
+                    }).catch(function (err) { showToast(err.message, 'error'); });
+                } else if (action === 'deliver-pending') {
+                    api('POST', '/api/v1/admin/students/' + encodeURIComponent(email) + '/deliver-pending')
+                        .then(function (r) {
+                            showToast('Flushed ' + r.flushed + ' pending messages', 'success');
+                            refreshAfterChange(email);
+                        }).catch(function (err) { showToast(err.message, 'error'); });
+                } else if (action === 'add-note') {
+                    var subject = prompt('Subject:', 'Test message from admin');
+                    if (!subject) return;
+                    var body = prompt('Body:', 'This is a test message injected via the admin tool.');
+                    if (body === null) return;
+                    api('POST', '/api/v1/admin/students/' + encodeURIComponent(email) + '/note',
+                        { subject: subject, body: body })
+                        .then(function () {
+                            showToast('Test message injected', 'success');
+                            refreshAfterChange(email);
+                        }).catch(function (err) { showToast(err.message, 'error'); });
+                }
+            }
+
+            function refreshAfterChange(email) {
+                loadStudents();
+                loadDetail(email);
+            }
+
+            // ============================================================
+            // Initial wiring
+            // ============================================================
+            els.refresh.addEventListener('click', loadStudents);
+            els.createBtn.addEventListener('click', function () {
+                var email = els.newEmail.value.trim();
+                if (!email) return;
+                api('POST', '/api/v1/admin/students', { email: email })
+                    .then(function () {
+                        showToast('Created ' + email, 'success');
+                        els.newEmail.value = '';
+                        loadStudents();
+                    }).catch(function (err) { showToast(err.message, 'error'); });
+            });
+            els.newEmail.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') els.createBtn.click();
+            });
+
+            // Auto-connect if a token is already saved
+            if (token) {
+                verifyToken().then(function (ok) {
+                    if (ok) {
+                        loadStudents();
+                        loadJobs();
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

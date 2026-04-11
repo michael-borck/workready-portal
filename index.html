@@ -4,23 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkReady — Your Internship Journey</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Sign-in screen -->
-    <section id="signin" class="screen">
-        <div class="signin-card">
-            <h1 class="brand">
-                <span class="brand-work">Work</span><span class="brand-ready">Ready</span>
-            </h1>
-            <p class="signin-tagline">Your simulated internship experience</p>
-            <form id="signin-form" class="signin-form">
-                <label for="email">Curtin email address</label>
-                <input type="email" id="email" name="email" required
-                       placeholder="firstname.lastname@student.curtin.edu.au">
-                <button type="submit" class="btn btn-primary">Sign in</button>
-            </form>
-            <p class="signin-help">No password required for the simulation. Use any email to begin.</p>
+    <!-- Sign-in screen — two-column hero -->
+    <section id="signin" class="screen signin-screen">
+        <div class="signin-shell">
+            <div class="signin-left">
+                <div class="signin-brand-row">
+                    <div class="signin-mark" aria-hidden="true">W</div>
+                    <h1 class="brand">
+                        <span class="brand-work">Work</span><span class="brand-ready">Ready</span>
+                    </h1>
+                </div>
+                <p class="signin-headline">Your simulated internship.</p>
+                <p class="signin-tagline">A safe place to apply, interview, and work — without the stakes of the real thing.</p>
+
+                <form id="signin-form" class="signin-form">
+                    <label for="email">Curtin email address</label>
+                    <input type="email" id="email" name="email" required
+                           placeholder="firstname.lastname@student.curtin.edu.au">
+                    <button type="submit" class="btn btn-primary">Sign in &rarr;</button>
+                </form>
+                <p class="signin-help">No password — use any email to begin. Your progress is saved against this address.</p>
+            </div>
+
+            <aside class="signin-right" aria-label="What to expect">
+                <p class="signin-aside-label">/&nbsp;&nbsp;What to expect&nbsp;&nbsp;/</p>
+                <h2 class="signin-aside-title">A four-stage journey through real internship territory.</h2>
+
+                <ol class="journey">
+                    <li class="journey-step">
+                        <div class="journey-num">01</div>
+                        <div class="journey-body">
+                            <h3>Browse &amp; apply</h3>
+                            <p>Explore real graduate roles on <strong>seek.jobs</strong>, draft your CV, and apply to companies that suit you.</p>
+                        </div>
+                    </li>
+                    <li class="journey-step">
+                        <div class="journey-num">02</div>
+                        <div class="journey-body">
+                            <h3>Wait on the outcome</h3>
+                            <p>Application updates land in your <strong>personal inbox</strong>. Some you'll get; some you won't.</p>
+                        </div>
+                    </li>
+                    <li class="journey-step">
+                        <div class="journey-num">03</div>
+                        <div class="journey-body">
+                            <h3>Interview &amp; start work</h3>
+                            <p>If you're shortlisted, you'll have a <strong>real interview conversation</strong>, then begin your simulated internship.</p>
+                        </div>
+                    </li>
+                    <li class="journey-step">
+                        <div class="journey-num">04</div>
+                        <div class="journey-body">
+                            <h3>Complete the internship</h3>
+                            <p>Take on tasks, work with your team, and finish the cycle with the experience to do it for real.</p>
+                        </div>
+                    </li>
+                </ol>
+
+                <p class="signin-aside-foot">Curtin University · educational simulation · entirely fictional</p>
+            </aside>
         </div>
     </section>
 
@@ -29,6 +75,7 @@
         <header class="header">
             <div class="wrap header-content">
                 <a href="#" class="brand-link" id="brand-link">
+                    <div class="header-mark" aria-hidden="true">W</div>
                     <span class="brand">
                         <span class="brand-work">Work</span><span class="brand-ready">Ready</span>
                     </span>
@@ -55,53 +102,62 @@
         <main class="wrap main">
             <!-- Sidebar navigation -->
             <aside class="sidebar">
-                <nav class="nav">
-                    <button class="nav-item active" data-view="dashboard">
-                        <span class="nav-icon">&#127968;</span>
-                        Dashboard
-                    </button>
-                    <button class="nav-item" data-view="inbox-personal">
-                        <span class="nav-icon">&#9993;</span>
-                        Personal Inbox
-                        <span id="unread-personal" class="badge hidden">0</span>
-                    </button>
-                    <button class="nav-item hidden" data-view="inbox-work" id="nav-inbox-work">
-                        <span class="nav-icon">&#128188;</span>
-                        Work Inbox
-                        <span id="unread-work" class="badge hidden">0</span>
-                    </button>
-                    <button class="nav-item hidden" data-view="tasks" id="nav-tasks">
-                        <span class="nav-icon">&#128221;</span>
-                        Tasks
-                    </button>
-                    <button class="nav-item hidden" data-view="interview" id="nav-interview">
-                        <span class="nav-icon">&#127908;</span>
-                        Interview
-                    </button>
-                    <button class="nav-item hidden" data-view="team" id="nav-team">
-                        <span class="nav-icon">&#128101;</span>
-                        Team
-                    </button>
-                    <button class="nav-item" data-view="primer">
-                        <span class="nav-icon">&#127918;</span>
-                        Play the Primer
-                    </button>
-                </nav>
+                <div class="sidebar-section">
+                    <h4>Workspace</h4>
+                    <nav class="nav">
+                        <button class="nav-item active" data-view="dashboard">
+                            <span class="nav-icon">&#127968;</span>
+                            Dashboard
+                        </button>
+                        <button class="nav-item" data-view="inbox-personal">
+                            <span class="nav-icon">&#9993;</span>
+                            Personal Inbox
+                            <span id="unread-personal" class="badge hidden">0</span>
+                        </button>
+                        <button class="nav-item hidden" data-view="inbox-work" id="nav-inbox-work">
+                            <span class="nav-icon">&#128188;</span>
+                            Work Inbox
+                            <span id="unread-work" class="badge hidden">0</span>
+                        </button>
+                        <button class="nav-item hidden" data-view="tasks" id="nav-tasks">
+                            <span class="nav-icon">&#128221;</span>
+                            Tasks
+                        </button>
+                        <button class="nav-item hidden" data-view="interview" id="nav-interview">
+                            <span class="nav-icon">&#127908;</span>
+                            Interview
+                        </button>
+                        <button class="nav-item hidden" data-view="team" id="nav-team">
+                            <span class="nav-icon">&#128101;</span>
+                            Team
+                        </button>
+                        <button class="nav-item" data-view="primer">
+                            <span class="nav-icon">&#127918;</span>
+                            Play the Primer
+                        </button>
+                    </nav>
+                </div>
 
                 <div class="sidebar-section">
                     <h4>External</h4>
                     <a href="https://michael-borck.github.io/workready-jobs/" target="_blank" id="job-board-link" class="sidebar-link">
-                        &#128269; seek.jobs
+                        <span class="sidebar-link-icon">&#128269;</span>
+                        seek.jobs
+                        <span class="sidebar-link-ext" aria-hidden="true">&#8599;</span>
                     </a>
                     <a href="#" target="_blank" id="intranet-link" class="sidebar-link hidden">
-                        &#127760; Company Intranet
+                        <span class="sidebar-link-icon">&#127760;</span>
+                        Company Intranet
+                        <span class="sidebar-link-ext" aria-hidden="true">&#8599;</span>
                     </a>
                 </div>
 
                 <div class="sidebar-section">
                     <h4>Support Tools</h4>
                     <a href="https://github.com/michael-borck/talk-buddy/releases" target="_blank" id="talk-buddy-link" class="sidebar-link">
-                        &#127908; Talk Buddy (practise)
+                        <span class="sidebar-link-icon">&#127908;</span>
+                        Talk Buddy (practise)
+                        <span class="sidebar-link-ext" aria-hidden="true">&#8599;</span>
                     </a>
                     <p class="sidebar-blurb">
                         Practise interviews offline with voice. Download a

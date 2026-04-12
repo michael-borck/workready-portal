@@ -415,12 +415,26 @@
     }
 
     function openMessage(msg) {
+        mailState.currentMessage = msg;
         els.modalSubject.textContent = msg.subject;
         els.modalSender.textContent = msg.sender_name;
         els.modalRole.textContent = msg.sender_role ? '(' + msg.sender_role + ')' : '';
+        if (modalSenderEmail) {
+            var se = msg.sender_email || '';
+            modalSenderEmail.textContent = se;
+            modalSenderEmail.style.display = se && se !== 'noreply@workready.eduserver.au' ? 'block' : 'none';
+        }
         els.modalDate.textContent = formatDate(msg.deliver_at);
         els.modalBody.textContent = msg.body;
+
+        // Show/hide reply button based on sender type
+        if (modalReplyBtn) {
+            var isNoreply = !msg.sender_email || msg.sender_email.indexOf('noreply') !== -1;
+            modalReplyBtn.style.display = isNoreply ? 'none' : 'inline-flex';
+        }
+
         els.modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
 
         if (!msg.is_read) {
             api('/api/v1/inbox/message/' + msg.id + '/read', { method: 'POST' })
@@ -430,6 +444,8 @@
 
     function closeModal() {
         els.modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        mailState.currentMessage = null;
     }
 
     // --- View switching ---
@@ -452,6 +468,7 @@
         if (view === 'dashboard') renderDashboard();
         if (view === 'inbox-personal') loadInbox('personal');
         if (view === 'inbox-work') loadInbox('work');
+        if (view === 'sent') loadSentBox();
         if (view === 'primer') loadPrimerIframe();
         if (view === 'interview') loadInterview();
     }
@@ -1082,6 +1099,210 @@
     els.modal.addEventListener('click', function (e) {
         if (e.target === els.modal) closeModal();
     });
+
+    // --- Mail system: compose, reply, delete, sent box ---
+
+    var composeModal = $('compose-modal');
+    var composeForm = $('compose-form');
+    var composeTo = $('compose-to');
+    var composeSubject = $('compose-subject');
+    var composeBody = $('compose-body');
+    var composeAttachment = $('compose-attachment');
+    var composeResult = $('compose-result');
+    var composeSendBtn = $('compose-send-btn');
+    var composeClose = $('compose-close');
+    var composeCancelBtn = $('compose-cancel-btn');
+    var composeTitle = $('compose-title');
+    var emailDirectory = $('email-directory');
+    var sentList = $('sent-list');
+    var modalReplyBtn = $('modal-reply-btn');
+    var modalDeleteBtn = $('modal-delete-btn');
+    var modalSenderEmail = $('modal-sender-email');
+    var modalActions = $('modal-actions');
+
+    var mailState = {
+        replyToId: null,
+        currentMessage: null,
+        directoryLoaded: false,
+    };
+
+    // Compose buttons
+    var composeBtnPersonal = $('compose-btn-personal');
+    var composeBtnWork = $('compose-btn-work');
+    if (composeBtnPersonal) composeBtnPersonal.addEventListener('click', function () { openCompose(); });
+    if (composeBtnWork) composeBtnWork.addEventListener('click', function () { openCompose(); });
+
+    function openCompose(prefillTo, prefillSubject, replyToId) {
+        mailState.replyToId = replyToId || null;
+        composeTitle.textContent = replyToId ? 'Reply' : 'New message';
+        composeTo.value = prefillTo || '';
+        composeSubject.value = prefillSubject || '';
+        composeBody.value = '';
+        composeAttachment.value = '';
+        composeResult.classList.add('hidden');
+        composeTo.readOnly = !!replyToId;
+        composeSubject.readOnly = !!replyToId;
+        composeSendBtn.textContent = replyToId ? 'Send reply →' : 'Send →';
+        composeModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadEmailDirectory();
+        if (!replyToId) composeTo.focus();
+        else composeBody.focus();
+    }
+
+    function closeCompose() {
+        composeModal.classList.add('hidden');
+        document.body.style.overflow = '';
+        mailState.replyToId = null;
+    }
+
+    composeClose.addEventListener('click', closeCompose);
+    composeCancelBtn.addEventListener('click', closeCompose);
+    composeModal.addEventListener('click', function (e) {
+        if (e.target === composeModal) closeCompose();
+    });
+
+    // Email directory for autocomplete
+    function loadEmailDirectory() {
+        if (mailState.directoryLoaded) return;
+        api('/api/v1/mail/directory')
+            .then(function (data) {
+                var html = '';
+                (data.addresses || []).forEach(function (a) {
+                    var label = a.email;
+                    if (a.name) label = a.name + ' (' + a.email + ')';
+                    html += '<option value="' + escapeHtml(a.email) + '">' + escapeHtml(label) + '</option>';
+                });
+                emailDirectory.innerHTML = html;
+                mailState.directoryLoaded = true;
+            })
+            .catch(function () {}); // silent — autocomplete is a nicety
+    }
+
+    // Send / compose form submission
+    composeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var fd = new FormData();
+        fd.append('student_email', state.email);
+        fd.append('recipient_email', composeTo.value.trim());
+        fd.append('subject', composeSubject.value.trim());
+        fd.append('body', composeBody.value);
+        if (composeAttachment.files[0]) {
+            fd.append('attachment', composeAttachment.files[0]);
+        }
+
+        composeSendBtn.disabled = true;
+        composeSendBtn.textContent = 'Sending...';
+        composeResult.classList.add('hidden');
+
+        var endpoint = mailState.replyToId
+            ? '/api/v1/mail/reply/' + mailState.replyToId
+            : '/api/v1/mail/compose';
+
+        // For reply, API expects student_email + body (+ optional attachment)
+        if (mailState.replyToId) {
+            fd.delete('recipient_email');
+            fd.delete('subject');
+        }
+
+        fetch(CONFIG.API_BASE + endpoint, { method: 'POST', body: fd })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Send failed: ' + r.status);
+                return r.json();
+            })
+            .then(function (result) {
+                if (result.status === 'bounced') {
+                    composeResult.className = 'compose-result compose-bounce';
+                    var msg = '↩ Message bounced: ' + (result.bounce_reason || 'invalid address');
+                    if (result.suggestion) msg += '\n\nDid you mean: ' + result.suggestion + '?';
+                    composeResult.textContent = msg;
+                } else {
+                    composeResult.className = 'compose-result compose-success';
+                    composeResult.textContent = '✓ Message sent';
+                    setTimeout(function () {
+                        closeCompose();
+                        // Refresh inbox to show any ack / bounce
+                        if (state.currentView === 'inbox-personal') loadInbox('personal');
+                        if (state.currentView === 'inbox-work') loadInbox('work');
+                        if (state.currentView === 'sent') loadSentBox();
+                        loadStudentState();
+                    }, 1200);
+                }
+                composeResult.classList.remove('hidden');
+            })
+            .catch(function (err) {
+                composeResult.className = 'compose-result compose-error';
+                composeResult.textContent = 'Failed to send: ' + err.message;
+                composeResult.classList.remove('hidden');
+            })
+            .finally(function () {
+                composeSendBtn.disabled = false;
+                composeSendBtn.textContent = mailState.replyToId ? 'Send reply →' : 'Send →';
+            });
+    });
+
+    // Reply button in message modal
+    modalReplyBtn.addEventListener('click', function () {
+        var msg = mailState.currentMessage;
+        if (!msg) return;
+        closeModal();
+        var replyTo = msg.sender_email || '';
+        var subj = msg.subject || '';
+        if (!subj.startsWith('Re: ')) subj = 'Re: ' + subj;
+        openCompose(replyTo, subj, msg.id);
+    });
+
+    // Delete button in message modal
+    modalDeleteBtn.addEventListener('click', function () {
+        var msg = mailState.currentMessage;
+        if (!msg) return;
+        if (!confirm('Delete this message?')) return;
+        fetch(CONFIG.API_BASE + '/api/v1/mail/message/' + msg.id + '?student_email=' + encodeURIComponent(state.email), {
+            method: 'DELETE',
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Delete failed');
+                closeModal();
+                if (state.currentView === 'inbox-personal') loadInbox('personal');
+                if (state.currentView === 'inbox-work') loadInbox('work');
+                if (state.currentView === 'sent') loadSentBox();
+                loadStudentState();
+            })
+            .catch(function (err) {
+                alert('Could not delete: ' + err.message);
+            });
+    });
+
+    // Sent box
+    function loadSentBox() {
+        if (!sentList) return;
+        sentList.innerHTML = '<div class="empty-inbox">Loading...</div>';
+        api('/api/v1/mail/sent/' + encodeURIComponent(state.email))
+            .then(function (data) {
+                if (!data.messages || data.messages.length === 0) {
+                    sentList.innerHTML = '<div class="empty-inbox">No sent messages yet. Use the Compose button in your inbox to send one.</div>';
+                    return;
+                }
+                var html = '';
+                data.messages.forEach(function (m) {
+                    var statusClass = m.status === 'bounced' ? ' sent-bounced' : ' sent-delivered';
+                    var statusIcon = m.status === 'bounced' ? '↩' : '✓';
+                    html +=
+                        '<div class="message-item sent-item' + statusClass + '">' +
+                        '<div class="message-header">' +
+                        '<span class="message-sender">To: ' + escapeHtml(m.recipient_email) + '</span>' +
+                        '<span class="message-date">' + formatDate(m.created_at) + ' ' + statusIcon + '</span>' +
+                        '</div>' +
+                        '<div class="message-subject">' + escapeHtml(m.subject) + '</div>' +
+                        '<div class="message-preview">' + escapeHtml(m.body.split('\n')[0].substring(0, 80)) + '</div>' +
+                        '</div>';
+                });
+                sentList.innerHTML = html;
+            })
+            .catch(function () {
+                sentList.innerHTML = '<div class="empty-inbox">Could not load sent messages.</div>';
+            });
+    }
 
     // Interview chat events
     if (els.interviewInputForm) {

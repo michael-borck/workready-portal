@@ -131,6 +131,10 @@
                             <span class="nav-icon">&#128101;</span>
                             Team
                         </button>
+                        <button class="nav-item" data-view="sent">
+                            <span class="nav-icon">&#128228;</span>
+                            Sent
+                        </button>
                         <button class="nav-item" data-view="primer">
                             <span class="nav-icon">&#127918;</span>
                             Play the Primer
@@ -176,16 +180,33 @@
 
                 <!-- Personal inbox view -->
                 <div id="view-inbox-personal" class="view hidden">
-                    <h2>Personal Inbox</h2>
-                    <p class="view-subtitle">Application updates and correspondence with employers</p>
+                    <div class="view-header-row">
+                        <div>
+                            <h2>Personal Inbox</h2>
+                            <p class="view-subtitle">Application updates and correspondence with employers</p>
+                        </div>
+                        <button class="btn btn-primary" id="compose-btn-personal">&#9998; Compose</button>
+                    </div>
                     <div id="inbox-personal-list" class="message-list"></div>
                 </div>
 
                 <!-- Work inbox view -->
                 <div id="view-inbox-work" class="view hidden">
-                    <h2>Work Inbox</h2>
-                    <p class="view-subtitle">Messages from your manager, mentor, and colleagues</p>
+                    <div class="view-header-row">
+                        <div>
+                            <h2>Work Inbox</h2>
+                            <p class="view-subtitle">Messages from your manager, mentor, and colleagues</p>
+                        </div>
+                        <button class="btn btn-primary" id="compose-btn-work">&#9998; Compose</button>
+                    </div>
                     <div id="inbox-work-list" class="message-list"></div>
+                </div>
+
+                <!-- Sent box view -->
+                <div id="view-sent" class="view hidden">
+                    <h2>Sent</h2>
+                    <p class="view-subtitle">Messages you've sent to companies and contacts</p>
+                    <div id="sent-list" class="message-list"></div>
                 </div>
 
                 <!-- Tasks view -->
@@ -243,16 +264,55 @@
         </main>
     </div>
 
-    <!-- Message modal -->
+    <!-- Message modal (read + reply + delete) -->
     <div id="message-modal" class="modal hidden">
         <div class="modal-content">
             <button class="modal-close" id="modal-close">&times;</button>
             <div class="modal-meta">
                 <h3 id="modal-subject"></h3>
                 <p class="modal-from">From: <span id="modal-sender"></span> <span id="modal-role"></span></p>
+                <p class="modal-sender-email" id="modal-sender-email"></p>
                 <p class="modal-date" id="modal-date"></p>
             </div>
             <div class="modal-body" id="modal-body"></div>
+            <div class="modal-actions" id="modal-actions">
+                <button class="btn btn-primary" id="modal-reply-btn">&#8617; Reply</button>
+                <button class="btn btn-link modal-delete-btn" id="modal-delete-btn">&#128465; Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compose modal -->
+    <div id="compose-modal" class="modal hidden">
+        <div class="modal-content modal-content-wide">
+            <button class="modal-close" id="compose-close">&times;</button>
+            <h2 id="compose-title">New message</h2>
+            <form id="compose-form">
+                <div class="form-group">
+                    <label for="compose-to">To <span class="required">*</span></label>
+                    <input type="email" id="compose-to" required
+                           placeholder="firstname.lastname@company.com.au"
+                           list="email-directory">
+                    <datalist id="email-directory"></datalist>
+                </div>
+                <div class="form-group">
+                    <label for="compose-subject">Subject <span class="required">*</span></label>
+                    <input type="text" id="compose-subject" required placeholder="Subject">
+                </div>
+                <div class="form-group">
+                    <label for="compose-body">Message</label>
+                    <textarea id="compose-body" rows="8" placeholder="Write your message..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="compose-attachment">Attachment (PDF, max 5MB)</label>
+                    <input type="file" id="compose-attachment" accept=".pdf">
+                </div>
+                <div class="compose-actions">
+                    <button type="submit" class="btn btn-primary" id="compose-send-btn">Send &rarr;</button>
+                    <button type="button" class="btn btn-link" id="compose-cancel-btn">Cancel</button>
+                </div>
+                <div id="compose-result" class="compose-result hidden"></div>
+            </form>
         </div>
     </div>
 

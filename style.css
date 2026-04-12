@@ -1097,6 +1097,171 @@ ul, ol { list-style: none; }
     font-size: 0.96rem;
 }
 
+.modal-sender-email {
+    font-family: 'Inter', monospace;
+    font-size: 0.82rem;
+    color: var(--sim-primary);
+    margin-top: 0.15rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--sim-border);
+    align-items: center;
+}
+
+.modal-delete-btn {
+    margin-left: auto;
+    color: var(--sim-danger) !important;
+    font-size: 0.85rem !important;
+}
+.modal-delete-btn:hover {
+    background: var(--sim-danger-soft) !important;
+    border-color: var(--sim-danger) !important;
+}
+
+.modal-content-wide { max-width: 640px; }
+
+/* ============================================================
+   COMPOSE MODAL
+   ============================================================ */
+
+#compose-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-top: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-group label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--sim-text);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.form-group input,
+.form-group textarea {
+    padding: 0.75rem 0.95rem;
+    border: 1px solid var(--sim-border-2);
+    border-radius: var(--sim-radius);
+    font-family: inherit;
+    font-size: 0.95rem;
+    background: var(--sim-white);
+    color: var(--sim-text);
+    transition: all 0.15s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--sim-primary);
+    box-shadow: 0 0 0 3px rgba(31, 77, 153, 0.15);
+}
+
+.form-group input[readonly] {
+    background: var(--sim-bg);
+    color: var(--sim-muted);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.form-group input[type="file"] {
+    padding: 0.5rem;
+    font-size: 0.88rem;
+}
+
+.required { color: var(--sim-coral); }
+
+.compose-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.compose-result {
+    padding: 0.85rem 1rem;
+    border-radius: var(--sim-radius);
+    font-size: 0.92rem;
+    margin-top: 0.75rem;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.compose-success {
+    background: var(--sim-success-soft);
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.compose-bounce {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+}
+
+.compose-error {
+    background: var(--sim-danger-soft);
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+/* ============================================================
+   VIEW HEADER ROW (inbox heading + compose button)
+   ============================================================ */
+
+.view-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+}
+
+.view-header-row h2 {
+    margin-bottom: 0.25rem;
+}
+
+.view-header-row .btn {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   SENT BOX
+   ============================================================ */
+
+.sent-item {
+    border-left-color: var(--sim-primary);
+}
+
+.sent-item.sent-bounced {
+    border-left-color: var(--sim-coral);
+    opacity: 0.75;
+}
+
+.sent-item.sent-bounced .message-sender {
+    color: var(--sim-coral);
+}
+
+.sent-item.sent-delivered .message-date {
+    color: var(--sim-success);
+}
+
 /* ============================================================
    INTERVIEW VIEW
    ============================================================ */

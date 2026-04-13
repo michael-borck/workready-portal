@@ -173,7 +173,8 @@
         var hired = s.state === 'HIRED' || s.state === 'COMPLETED';
         var inInterviewStage = hired && s.active_application
             && s.active_application.current_stage === 'interview';
-        toggle(els.navInboxWork, hired);
+        var workEmailSection = $('nav-work-email-section');
+        if (workEmailSection) toggle(workEmailSection, hired);
         toggle(els.navInterview, inInterviewStage);
         toggle(els.navTasks, hired);
         toggle(els.navTeam, hired);
@@ -469,6 +470,7 @@
         if (view === 'inbox-personal') loadInbox('personal');
         if (view === 'inbox-work') loadInbox('work');
         if (view === 'sent') loadSentBox();
+        if (view === 'sent-work') loadSentBox();  // reuses same loader
         if (view === 'primer') loadPrimerIframe();
         if (view === 'interview') loadInterview();
     }
@@ -1126,11 +1128,11 @@
         directoryLoaded: false,
     };
 
-    // Compose buttons
-    var composeBtnPersonal = $('compose-btn-personal');
-    var composeBtnWork = $('compose-btn-work');
-    if (composeBtnPersonal) composeBtnPersonal.addEventListener('click', function () { openCompose(); });
-    if (composeBtnWork) composeBtnWork.addEventListener('click', function () { openCompose(); });
+    // Compose buttons (on all inbox/sent views)
+    ['compose-btn-personal', 'compose-btn-work', 'compose-btn-sent', 'compose-btn-sent-work'].forEach(function (id) {
+        var btn = $(id);
+        if (btn) btn.addEventListener('click', function () { openCompose(); });
+    });
 
     function openCompose(prefillTo, prefillSubject, replyToId) {
         mailState.replyToId = replyToId || null;
@@ -1272,14 +1274,15 @@
             });
     });
 
-    // Sent box
+    // Sent box — shared by personal sent and work sent views
     function loadSentBox() {
-        if (!sentList) return;
-        sentList.innerHTML = '<div class="empty-inbox">Loading...</div>';
+        var targetList = state.currentView === 'sent-work' ? $('sent-work-list') : sentList;
+        if (!targetList) return;
+        targetList.innerHTML = '<div class="empty-inbox">Loading...</div>';
         api('/api/v1/mail/sent/' + encodeURIComponent(state.email))
             .then(function (data) {
                 if (!data.messages || data.messages.length === 0) {
-                    sentList.innerHTML = '<div class="empty-inbox">No sent messages yet. Use the Compose button in your inbox to send one.</div>';
+                    targetList.innerHTML = '<div class="empty-inbox">No sent messages yet. Use the Compose button to send one.</div>';
                     return;
                 }
                 var html = '';
@@ -1296,10 +1299,10 @@
                         '<div class="message-preview">' + escapeHtml(m.body.split('\n')[0].substring(0, 80)) + '</div>' +
                         '</div>';
                 });
-                sentList.innerHTML = html;
+                targetList.innerHTML = html;
             })
             .catch(function () {
-                sentList.innerHTML = '<div class="empty-inbox">Could not load sent messages.</div>';
+                targetList.innerHTML = '<div class="empty-inbox">Could not load sent messages.</div>';
             });
     }
 

@@ -109,16 +109,38 @@
                             <span class="nav-icon">&#127968;</span>
                             Dashboard
                         </button>
+                    </nav>
+                </div>
+
+                <div class="sidebar-section">
+                    <h4>&#9993; Personal Email</h4>
+                    <nav class="nav">
                         <button class="nav-item" data-view="inbox-personal">
-                            <span class="nav-icon">&#9993;</span>
-                            Personal Inbox
+                            Inbox
                             <span id="unread-personal" class="badge hidden">0</span>
                         </button>
-                        <button class="nav-item hidden" data-view="inbox-work" id="nav-inbox-work">
-                            <span class="nav-icon">&#128188;</span>
-                            Work Inbox
+                        <button class="nav-item" data-view="sent">
+                            Sent
+                        </button>
+                    </nav>
+                </div>
+
+                <div class="sidebar-section hidden" id="nav-work-email-section">
+                    <h4>&#128188; Work Email</h4>
+                    <nav class="nav">
+                        <button class="nav-item" data-view="inbox-work" id="nav-inbox-work">
+                            Inbox
                             <span id="unread-work" class="badge hidden">0</span>
                         </button>
+                        <button class="nav-item" data-view="sent-work">
+                            Sent
+                        </button>
+                    </nav>
+                </div>
+
+                <div class="sidebar-section">
+                    <h4>Workspace</h4>
+                    <nav class="nav">
                         <button class="nav-item hidden" data-view="tasks" id="nav-tasks">
                             <span class="nav-icon">&#128221;</span>
                             Tasks
@@ -130,10 +152,6 @@
                         <button class="nav-item hidden" data-view="team" id="nav-team">
                             <span class="nav-icon">&#128101;</span>
                             Team
-                        </button>
-                        <button class="nav-item" data-view="sent">
-                            <span class="nav-icon">&#128228;</span>
-                            Sent
                         </button>
                         <button class="nav-item" data-view="primer">
                             <span class="nav-icon">&#127918;</span>
@@ -178,11 +196,11 @@
                     <div id="dashboard-content"></div>
                 </div>
 
-                <!-- Personal inbox view -->
+                <!-- Personal Email — Inbox -->
                 <div id="view-inbox-personal" class="view hidden">
                     <div class="view-header-row">
                         <div>
-                            <h2>Personal Inbox</h2>
+                            <h2>Personal Email — Inbox</h2>
                             <p class="view-subtitle">Application updates and correspondence with employers</p>
                         </div>
                         <button class="btn btn-primary" id="compose-btn-personal">&#9998; Compose</button>
@@ -190,11 +208,23 @@
                     <div id="inbox-personal-list" class="message-list"></div>
                 </div>
 
-                <!-- Work inbox view -->
+                <!-- Personal Email — Sent -->
+                <div id="view-sent" class="view hidden">
+                    <div class="view-header-row">
+                        <div>
+                            <h2>Personal Email — Sent</h2>
+                            <p class="view-subtitle">Messages you've sent to companies and contacts</p>
+                        </div>
+                        <button class="btn btn-primary" id="compose-btn-sent">&#9998; Compose</button>
+                    </div>
+                    <div id="sent-list" class="message-list"></div>
+                </div>
+
+                <!-- Work Email — Inbox -->
                 <div id="view-inbox-work" class="view hidden">
                     <div class="view-header-row">
                         <div>
-                            <h2>Work Inbox</h2>
+                            <h2>Work Email — Inbox</h2>
                             <p class="view-subtitle">Messages from your manager, mentor, and colleagues</p>
                         </div>
                         <button class="btn btn-primary" id="compose-btn-work">&#9998; Compose</button>
@@ -202,11 +232,16 @@
                     <div id="inbox-work-list" class="message-list"></div>
                 </div>
 
-                <!-- Sent box view -->
-                <div id="view-sent" class="view hidden">
-                    <h2>Sent</h2>
-                    <p class="view-subtitle">Messages you've sent to companies and contacts</p>
-                    <div id="sent-list" class="message-list"></div>
+                <!-- Work Email — Sent -->
+                <div id="view-sent-work" class="view hidden">
+                    <div class="view-header-row">
+                        <div>
+                            <h2>Work Email — Sent</h2>
+                            <p class="view-subtitle">Messages you've sent to colleagues</p>
+                        </div>
+                        <button class="btn btn-primary" id="compose-btn-sent-work">&#9998; Compose</button>
+                    </div>
+                    <div id="sent-work-list" class="message-list"></div>
                 </div>
 
                 <!-- Tasks view -->

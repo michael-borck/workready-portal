@@ -180,6 +180,17 @@
         toggle(els.navInterview, inInterviewStage);
         toggle(els.navTasks, hired);
         toggle(els.navTeam, hired);
+        toggle($('nav-lunchroom'), hired);
+        var inExitStage = hired && s.active_application
+            && s.active_application.current_stage === 'exit_interview';
+        toggle($('nav-exit-interview'), inExitStage || s.state === 'COMPLETED');
+        // Perf review nav: visible during work_task stage. The route
+        // returns a friendly 400 if task 2 isn't yet submitted, so the
+        // student can see the nav item but won't be able to start until
+        // the trigger has fired.
+        var inWorkTaskStage = hired && s.active_application
+            && s.active_application.current_stage === 'work_task';
+        toggle($('nav-perf-review'), inWorkTaskStage);
         toggle(els.intranetLink, hired);
 
         // Apply company theme if hired
@@ -290,6 +301,14 @@
             }
             html += '<h3 style="margin-top: 2rem;">Your Application History</h3>' +
                 renderApplicationList(s.applications);
+            // Resign option — deliberately small and non-prominent, only
+            // shown once the student is actually on placement (post-interview).
+            if (stage !== 'interview') {
+                html += '<div class="dashboard-resign-row">' +
+                    '<button id="dashboard-resign-btn" class="btn btn-link dashboard-resign-link">' +
+                    'Need to resign from this placement?</button>' +
+                    '</div>';
+            }
         } else if (s.state === 'COMPLETED') {
             els.dashboardTitle.textContent = 'Internship Complete';
             html =
@@ -314,6 +333,51 @@
                 switchView('interview');
             });
         }
+
+        // Wire resign link
+        var resignBtn = $('dashboard-resign-btn');
+        if (resignBtn) {
+            resignBtn.addEventListener('click', resignFromPlacement);
+        }
+    }
+
+    function resignFromPlacement() {
+        var s = state.student;
+        if (!s || !s.active_application) return;
+        var app = s.active_application;
+        var company = companyName(app.company_slug);
+        var msg =
+            'Resign from your placement at ' + company + '?\n\n' +
+            'This will end your internship at ' + company + ' immediately. ' +
+            'You will be able to apply to a different company on the job board ' +
+            '(up to 3 placement attempts total), but you cannot reapply to ' +
+            company + '.\n\n' +
+            'This action cannot be undone.';
+        if (!confirm(msg)) return;
+
+        fetch(CONFIG.API_BASE + '/api/v1/application/' + app.id + '/resign', {
+            method: 'POST',
+        })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.json().then(function (e) {
+                        throw new Error(e.detail || 'Resign failed');
+                    });
+                }
+                return r.json();
+            })
+            .then(function (result) {
+                var followup = result.can_reapply
+                    ? 'You can now apply to a different company on the job board.'
+                    : 'You have used all your placement attempts for this program. ' +
+                      'Speak to your lecturer if you need another chance.';
+                alert('Resigned successfully.\n\n' + followup);
+                loadStudentState();
+                switchView('dashboard');
+            })
+            .catch(function (err) {
+                alert('Could not resign: ' + err.message);
+            });
     }
 
     function renderApplicationList(apps) {
@@ -475,6 +539,10 @@
         if (view === 'sent-work') loadSentBox();  // reuses same loader
         if (view === 'primer') loadPrimerIframe();
         if (view === 'interview') loadInterview();
+        if (view === 'lunchroom') loadLunchroom();
+        if (view !== 'lunchroom') stopLunchroomPoll();
+        if (view === 'exit-interview') loadExitInterview();
+        if (view === 'perf-review') loadPerfReview();
     }
 
     function loadPrimerIframe() {
@@ -808,6 +876,8 @@
         var practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
             encodeURIComponent(app.company_slug) + '/' +
             encodeURIComponent(app.job_slug) + '/practice-script';
+        var talkBuddyUrl = CONFIG.API_BASE + '/api/v1/practice/interview/' +
+            app.id + '/talk-buddy.json';
         els.interviewPre.innerHTML =
             '<h2>Ready to interview?</h2>' +
             '<p>You\'re about to interview for the <strong>' +
@@ -821,12 +891,15 @@
             '<div class="action-buttons">' +
             '<button id="interview-begin-btn" class="btn btn-primary btn-cta">' +
             'Begin Interview</button>' +
-            '<a href="' + practiceUrl + '" download class="btn btn-secondary">' +
-            '&#128221; Download practice script</a>' +
+            '<a href="' + talkBuddyUrl + '" download class="btn btn-secondary">' +
+            '&#127908; Practice in Talk Buddy</a>' +
             '</div>' +
-            '<p class="practice-blurb">Want to rehearse first? Download the practice script ' +
-            'and use it with <a href="' + escapeHtml(CONFIG.TALK_BUDDY_URL) + '" target="_blank">Talk Buddy</a> ' +
-            'or any AI chat tool to practise as many times as you like.</p>';
+            '<p class="practice-blurb">Want to rehearse first? Download a ' +
+            '<a href="' + talkBuddyUrl + '" download>Talk Buddy scenario</a> ' +
+            'to practise against the same hiring manager persona, or grab the ' +
+            '<a href="' + practiceUrl + '" download>plain practice script</a> ' +
+            'for any other AI chat tool. You\'ll get the same kinds of questions ' +
+            'in the real interview, but the conversation will go differently.</p>';
         $('interview-begin-btn').addEventListener('click', startInterview);
     }
 
@@ -1082,6 +1155,1007 @@
             return iso;
         }
     }
+
+    // --- Lunchroom (Stage 5a invitation + 5b chat) ---
+
+    var lunchroomState = {
+        sessions: [],
+        activeSessionId: null,  // session currently rendered in chat mode
+        pollTimer: null,
+        lastPostCount: 0,
+        composing: '',
+    };
+
+    function loadLunchroom() {
+        var s = state.student;
+        var body = $('lunchroom-body');
+        if (!body) return;
+        if (!s || !s.active_application) {
+            body.innerHTML =
+                '<div class="empty-state">' +
+                '<p>The lunchroom becomes available once you\'re on placement.</p>' +
+                '</div>';
+            return;
+        }
+        var appId = s.active_application.id;
+        api('/api/v1/lunchroom/application/' + appId)
+            .then(function (data) {
+                lunchroomState.sessions = data.sessions || [];
+                renderLunchroom();
+            })
+            .catch(function () {
+                body.innerHTML =
+                    '<div class="empty-state">' +
+                    '<p>Could not load lunchroom sessions.</p>' +
+                    '</div>';
+            });
+    }
+
+    function renderLunchroom() {
+        var body = $('lunchroom-body');
+        if (!body) return;
+
+        // If a session is currently open in chat mode, render that instead.
+        if (lunchroomState.activeSessionId) {
+            var active = lunchroomState.sessions.find(function (x) {
+                return x.id === lunchroomState.activeSessionId;
+            });
+            if (active && (active.status === 'active' || active.status === 'completed')) {
+                renderLunchroomChat(active);
+                return;
+            }
+            lunchroomState.activeSessionId = null;
+        }
+
+        if (!lunchroomState.sessions.length) {
+            body.innerHTML =
+                '<div class="empty-state lunchroom-empty">' +
+                '<div class="lunchroom-empty-icon">&#127869;</div>' +
+                '<h3>No lunchroom invitations yet</h3>' +
+                '<p>Your colleagues will invite you along to a team lunch after you\'ve settled into the work. Check back later.</p>' +
+                '</div>';
+            return;
+        }
+
+        // Group sessions by status bucket
+        var buckets = { open: [], upcoming: [], past: [] };
+        lunchroomState.sessions.forEach(function (sess) {
+            if (sess.status === 'invited') buckets.open.push(sess);
+            else if (sess.status === 'accepted') buckets.upcoming.push(sess);
+            else if (sess.status === 'active') buckets.upcoming.push(sess);
+            else buckets.past.push(sess);
+        });
+
+        var html = '';
+        if (buckets.open.length) {
+            html += '<section class="lunchroom-section">' +
+                '<h3 class="lunchroom-section-title">Open invitations</h3>' +
+                buckets.open.map(renderInvitationCard).join('') +
+                '</section>';
+        }
+        if (buckets.upcoming.length) {
+            html += '<section class="lunchroom-section">' +
+                '<h3 class="lunchroom-section-title">Upcoming &amp; active</h3>' +
+                buckets.upcoming.map(renderScheduledCard).join('') +
+                '</section>';
+        }
+        if (buckets.past.length) {
+            html += '<section class="lunchroom-section lunchroom-past">' +
+                '<h3 class="lunchroom-section-title">Past lunches</h3>' +
+                buckets.past.map(renderPastCard).join('') +
+                '</section>';
+        }
+
+        body.innerHTML = html;
+        wireLunchroomButtons();
+    }
+
+    function occasionLabel(key) {
+        return ({
+            routine_lunch: 'Team lunch',
+            task_celebration: 'Team lunch — celebrating recent work',
+            birthday: 'Team lunch — birthday',
+            staff_award: 'Team lunch — staff recognition',
+            project_launch: 'Team lunch — project milestone',
+            cultural_event: 'Team lunch — cultural event',
+        })[key] || 'Team lunch';
+    }
+
+    function renderParticipantLine(participants) {
+        if (!participants || !participants.length) return '';
+        var names = participants.map(function (p) { return escapeHtml(p.name); });
+        return '<p class="lunchroom-participants">With: ' + names.join(', ') + '</p>';
+    }
+
+    function lunchroomTalkBuddyUrl(sessionId) {
+        return CONFIG.API_BASE + '/api/v1/practice/lunchroom/' +
+            sessionId + '/talk-buddy.json';
+    }
+
+    function renderInvitationCard(sess) {
+        var detail = sess.occasion_detail
+            ? '<p class="lunchroom-detail">' + escapeHtml(sess.occasion_detail) + '</p>'
+            : '';
+        var slots = (sess.proposed_slots || []).map(function (slot) {
+            return '<button class="btn btn-secondary lunchroom-slot-btn" ' +
+                'data-session-id="' + sess.id + '" ' +
+                'data-slot="' + escapeHtml(slot.scheduled_at) + '">' +
+                escapeHtml(slot.local_display) +
+                '</button>';
+        }).join('');
+        return '<article class="lunchroom-card lunchroom-card-invited">' +
+            '<header class="lunchroom-card-header">' +
+            '<h4>' + escapeHtml(occasionLabel(sess.occasion)) + '</h4>' +
+            '<span class="lunchroom-badge lunchroom-badge-invited">Invitation</span>' +
+            '</header>' +
+            detail +
+            renderParticipantLine(sess.participants) +
+            '<p class="lunchroom-prompt">Pick a slot that works for you:</p>' +
+            '<div class="lunchroom-slots">' + slots + '</div>' +
+            '<div class="lunchroom-card-actions">' +
+            '<button class="btn btn-link lunchroom-decline-btn" data-session-id="' + sess.id + '">' +
+            'Can\'t make it this time' +
+            '</button>' +
+            '<a href="' + lunchroomTalkBuddyUrl(sess.id) + '" download ' +
+            'class="btn btn-link lunchroom-practice-link">' +
+            '&#127908; Practice small talk in Talk Buddy &rarr;' +
+            '</a>' +
+            '</div>' +
+            '</article>';
+    }
+
+    function renderScheduledCard(sess) {
+        var open = chatEntryOpen(sess);
+        var when = sess.scheduled_at
+            ? '<p class="lunchroom-when">' + escapeHtml(formatLocalDateTime(sess.scheduled_at)) + '</p>'
+            : '';
+        var statusLabel = sess.status === 'active' ? 'Chat is live' :
+            (open ? 'Ready to join' : 'Upcoming');
+        var action = (sess.status === 'active' || open)
+            ? '<button class="btn btn-primary btn-cta lunchroom-enter-btn" data-session-id="' + sess.id + '">' +
+              (sess.status === 'active' ? 'Rejoin the chat' : 'Enter the lunchroom') +
+              '</button>'
+            : '<p class="lunchroom-muted">The chat opens around the scheduled time.</p>';
+        var practice = sess.status !== 'active'
+            ? '<a href="' + lunchroomTalkBuddyUrl(sess.id) + '" download ' +
+              'class="btn btn-link lunchroom-practice-link">' +
+              '&#127908; Practice small talk in Talk Buddy &rarr;</a>'
+            : '';
+        return '<article class="lunchroom-card lunchroom-card-scheduled">' +
+            '<header class="lunchroom-card-header">' +
+            '<h4>' + escapeHtml(occasionLabel(sess.occasion)) + '</h4>' +
+            '<span class="lunchroom-badge">' + escapeHtml(statusLabel) + '</span>' +
+            '</header>' +
+            when +
+            renderParticipantLine(sess.participants) +
+            '<div class="lunchroom-card-actions">' + action + practice + '</div>' +
+            '</article>';
+    }
+
+    function renderPastCard(sess) {
+        var labelMap = {
+            completed: 'Completed',
+            declined: 'Declined',
+            missed: 'Missed',
+            cancelled: 'Cancelled',
+        };
+        var when = sess.scheduled_at
+            ? '<p class="lunchroom-when lunchroom-muted">' +
+              escapeHtml(formatLocalDateTime(sess.scheduled_at)) +
+              '</p>'
+            : '';
+        var canReopen = sess.status === 'completed';
+        var action = canReopen
+            ? '<button class="btn btn-link lunchroom-enter-btn" data-session-id="' + sess.id + '">' +
+              'View transcript' +
+              '</button>'
+            : '';
+        return '<article class="lunchroom-card lunchroom-card-past">' +
+            '<header class="lunchroom-card-header">' +
+            '<h4>' + escapeHtml(occasionLabel(sess.occasion)) + '</h4>' +
+            '<span class="lunchroom-badge lunchroom-badge-muted">' +
+            escapeHtml(labelMap[sess.status] || sess.status) + '</span>' +
+            '</header>' +
+            when +
+            renderParticipantLine(sess.participants) +
+            (action ? '<div class="lunchroom-card-actions">' + action + '</div>' : '') +
+            '</article>';
+    }
+
+    function chatEntryOpen(sess) {
+        // Mirrors backend _chat_entry_allowed with sensible defaults for display.
+        // Uses a 5-minute early window and 24-hour late window.
+        if (!sess.scheduled_at) return false;
+        var target = new Date(sess.scheduled_at).getTime();
+        if (isNaN(target)) return false;
+        var now = Date.now();
+        return (target - 5 * 60 * 1000) <= now && now <= (target + 24 * 3600 * 1000);
+    }
+
+    function formatLocalDateTime(iso) {
+        try {
+            return new Date(iso).toLocaleString('en-AU', {
+                weekday: 'short', day: 'numeric', month: 'short',
+                hour: 'numeric', minute: '2-digit',
+            });
+        } catch (e) { return iso; }
+    }
+
+    function wireLunchroomButtons() {
+        document.querySelectorAll('.lunchroom-slot-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = parseInt(btn.getAttribute('data-session-id'), 10);
+                var slot = btn.getAttribute('data-slot');
+                pickLunchroomSlot(id, slot);
+            });
+        });
+        document.querySelectorAll('.lunchroom-decline-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = parseInt(btn.getAttribute('data-session-id'), 10);
+                declineLunchroomInvitation(id);
+            });
+        });
+        document.querySelectorAll('.lunchroom-enter-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = parseInt(btn.getAttribute('data-session-id'), 10);
+                enterLunchroomChat(id);
+            });
+        });
+    }
+
+    function pickLunchroomSlot(sessionId, slotIso) {
+        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/invitation/' + sessionId + '/pick-slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scheduled_at: slotIso }),
+        })
+            .then(function (r) { return r.json(); })
+            .then(function () { loadLunchroom(); })
+            .catch(function () { alert('Could not pick that slot — please try again.'); });
+    }
+
+    function declineLunchroomInvitation(sessionId) {
+        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/invitation/' + sessionId + '/decline', {
+            method: 'POST',
+        })
+            .then(function (r) { return r.json(); })
+            .then(function () { loadLunchroom(); })
+            .catch(function () { alert('Could not decline — please try again.'); });
+    }
+
+    function enterLunchroomChat(sessionId) {
+        lunchroomState.activeSessionId = sessionId;
+        lunchroomState.lastPostCount = 0;
+
+        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/activate', {
+            method: 'POST',
+        })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.json().then(function (e) {
+                        throw new Error(e.detail || 'Could not enter the lunchroom');
+                    });
+                }
+                return r.json();
+            })
+            .then(function (chatState) {
+                // Replace session in local cache with updated status
+                var idx = lunchroomState.sessions.findIndex(function (x) {
+                    return x.id === sessionId;
+                });
+                if (idx >= 0) lunchroomState.sessions[idx].status = chatState.status;
+                renderLunchroomChat(lunchroomState.sessions[idx], chatState);
+                startLunchroomPoll(sessionId);
+            })
+            .catch(function (err) {
+                lunchroomState.activeSessionId = null;
+                alert(err.message || 'Could not enter the lunchroom.');
+            });
+    }
+
+    function renderLunchroomChat(sess, initialState) {
+        var body = $('lunchroom-body');
+        if (!body) return;
+        var participantChips = (sess.participants || []).map(function (p) {
+            return '<span class="lunchroom-chip" style="background:' +
+                colorForSlug(p.slug) + '">' +
+                escapeHtml(p.name) + '</span>';
+        }).join('');
+        var completed = sess.status === 'completed';
+        var composer = completed
+            ? '<div class="lunchroom-composer-closed">The lunch has wrapped up.</div>'
+            : '<form class="lunchroom-composer" id="lunchroom-composer">' +
+              '<textarea id="lunchroom-input" rows="2" placeholder="Say something to the table…" maxlength="1000"></textarea>' +
+              '<button type="submit" class="btn btn-primary">Send</button>' +
+              '</form>';
+        body.innerHTML =
+            '<div class="lunchroom-room">' +
+            '<header class="lunchroom-room-header">' +
+            '<button class="btn btn-link lunchroom-back-btn" id="lunchroom-back-btn">&larr; Back to lunchroom</button>' +
+            '<div class="lunchroom-room-title">' +
+            '<h3>' + escapeHtml(occasionLabel(sess.occasion)) + '</h3>' +
+            '<div class="lunchroom-chips">' + participantChips + '</div>' +
+            '</div>' +
+            '<div class="lunchroom-room-status" id="lunchroom-status">' +
+            (completed ? 'Completed' : '<span class="live-dot"></span> Live') +
+            '</div>' +
+            '</header>' +
+            '<div class="lunchroom-messages" id="lunchroom-messages"></div>' +
+            '<div class="lunchroom-wind-down hidden" id="lunchroom-wind-down">' +
+            'The lunch is winding down…' +
+            '</div>' +
+            composer +
+            '</div>';
+
+        $('lunchroom-back-btn').addEventListener('click', function () {
+            stopLunchroomPoll();
+            lunchroomState.activeSessionId = null;
+            loadLunchroom();
+        });
+        var form = $('lunchroom-composer');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                sendLunchroomMessage();
+            });
+        }
+        if (initialState) applyChatState(initialState);
+    }
+
+    function applyChatState(chatState) {
+        var msgs = $('lunchroom-messages');
+        if (!msgs) return;
+        var posts = chatState.posts || [];
+        var prevCount = lunchroomState.lastPostCount;
+        lunchroomState.lastPostCount = posts.length;
+
+        msgs.innerHTML = posts.map(function (p) {
+            var isStudent = p.author_kind === 'student';
+            var cls = 'lunchroom-msg' + (isStudent ? ' lunchroom-msg-student' : '');
+            var style = isStudent
+                ? ''
+                : ' style="--author-color:' + colorForSlug(p.author_slug || '') + '"';
+            var name = isStudent ? 'You' : (p.author_name || 'Colleague');
+            return '<div class="' + cls + '"' + style + '>' +
+                '<div class="lunchroom-msg-author">' + escapeHtml(name) + '</div>' +
+                '<div class="lunchroom-msg-bubble">' + escapeHtml(p.content || '') + '</div>' +
+                '</div>';
+        }).join('');
+
+        if (posts.length > prevCount) {
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        var winddown = $('lunchroom-wind-down');
+        if (winddown && chatState.soft_cap) {
+            toggle(winddown, chatState.delivered_count >= chatState.soft_cap &&
+                chatState.status === 'active');
+        }
+
+        if (chatState.status === 'completed') {
+            var statusEl = $('lunchroom-status');
+            if (statusEl) statusEl.innerHTML = 'Completed';
+            var form = $('lunchroom-composer');
+            if (form) {
+                form.outerHTML =
+                    '<div class="lunchroom-composer-closed">The lunch has wrapped up.</div>';
+            }
+            stopLunchroomPoll();
+            // Refresh local session status so Back button shows it in "past"
+            var sess = lunchroomState.sessions.find(function (x) {
+                return x.id === lunchroomState.activeSessionId;
+            });
+            if (sess) sess.status = 'completed';
+        }
+    }
+
+    function startLunchroomPoll(sessionId) {
+        stopLunchroomPoll();
+        lunchroomState.pollTimer = setInterval(function () {
+            if (lunchroomState.activeSessionId !== sessionId) {
+                stopLunchroomPoll();
+                return;
+            }
+            fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/chat')
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (chatState) {
+                    if (chatState) applyChatState(chatState);
+                })
+                .catch(function () { /* swallow — retry next tick */ });
+        }, 3000);
+    }
+
+    function stopLunchroomPoll() {
+        if (lunchroomState.pollTimer) {
+            clearInterval(lunchroomState.pollTimer);
+            lunchroomState.pollTimer = null;
+        }
+    }
+
+    function sendLunchroomMessage() {
+        var input = $('lunchroom-input');
+        if (!input) return;
+        var text = input.value.trim();
+        if (!text) return;
+        var sessionId = lunchroomState.activeSessionId;
+        if (!sessionId) return;
+
+        input.value = '';
+        input.disabled = true;
+
+        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: text }),
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('post failed');
+                return r.json();
+            })
+            .then(function (chatState) {
+                applyChatState(chatState);
+            })
+            .catch(function () {
+                input.value = text;
+            })
+            .finally(function () {
+                input.disabled = false;
+                input.focus();
+            });
+    }
+
+    function colorForSlug(slug) {
+        // Stable hash → HSL. Keeps colours warm and distinct.
+        if (!slug) return '#8b9a8f';
+        var h = 0;
+        for (var i = 0; i < slug.length; i++) {
+            h = (h * 31 + slug.charCodeAt(i)) | 0;
+        }
+        var hue = Math.abs(h) % 360;
+        return 'hsl(' + hue + ', 55%, 55%)';
+    }
+
+    // --- Stage 6: Exit interview ---
+
+    var exitState = { session: null };
+
+    function loadExitInterview() {
+        var s = state.student;
+        var pre = $('exit-pre');
+        var chat = $('exit-chat');
+        var result = $('exit-result');
+        if (!pre || !chat || !result) return;
+
+        if (!s || !s.active_application) {
+            pre.classList.remove('hidden');
+            chat.classList.add('hidden');
+            result.classList.add('hidden');
+            pre.innerHTML = '<div class="placeholder">No active placement.</div>';
+            return;
+        }
+        var app = s.active_application;
+
+        // Look up any existing exit interview for this application
+        api('/api/v1/exit/application/' + app.id)
+            .then(function (session) {
+                exitState.session = session;
+                if (session.status === 'completed') {
+                    showExitResult(session);
+                } else {
+                    showExitChat(session);
+                }
+            })
+            .catch(function () {
+                // No session yet — show the pre-screen with a Start button
+                renderExitPre(app);
+            });
+    }
+
+    function renderExitPre(app) {
+        var pre = $('exit-pre');
+        var chat = $('exit-chat');
+        var result = $('exit-result');
+        pre.classList.remove('hidden');
+        chat.classList.add('hidden');
+        result.classList.add('hidden');
+        pre.innerHTML =
+            '<h2>Exit conversation</h2>' +
+            '<p>You\'ve finished your placement at <strong>' +
+            escapeHtml(companyName(app.company_slug)) + '</strong>. ' +
+            'Before we close out the program, <strong>Sam Reilly</strong> ' +
+            'from People &amp; Culture would like to sit down with you for ' +
+            'a short reflective conversation.</p>' +
+            '<p>This is <em>not an evaluation</em>. Sam wasn\'t the one ' +
+            'grading your tasks — they\'re here to help you think back on ' +
+            'what you learned, what you\'d do differently, and to hear any ' +
+            'feedback you have for the team. Be honest. Take your time.</p>' +
+            '<p>The conversation should take about 10 minutes (~8 questions).</p>' +
+            '<div class="action-buttons">' +
+            '<button id="exit-begin-btn" class="btn btn-primary btn-cta">' +
+            'Start the conversation</button>' +
+            '</div>';
+        $('exit-begin-btn').addEventListener('click', function () {
+            startExitInterview(app);
+        });
+    }
+
+    function startExitInterview(app) {
+        var btn = $('exit-begin-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Connecting...';
+        }
+        fetch(CONFIG.API_BASE + '/api/v1/exit/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ application_id: app.id }),
+        })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.json().then(function (e) {
+                        throw new Error(e.detail || 'Could not start');
+                    });
+                }
+                return r.json();
+            })
+            .then(function (session) {
+                exitState.session = session;
+                showExitChat(session);
+            })
+            .catch(function (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Start the conversation';
+                }
+                alert('Could not start: ' + err.message);
+            });
+    }
+
+    function showExitChat(session) {
+        $('exit-pre').classList.add('hidden');
+        $('exit-chat').classList.remove('hidden');
+        $('exit-result').classList.add('hidden');
+
+        $('exit-manager-name').textContent = session.manager_name;
+        $('exit-manager-role').textContent = session.manager_role
+            ? session.manager_role + ' at ' + session.company_name
+            : session.company_name;
+
+        renderExitTranscript(session.transcript);
+        updateExitTurnIndicator(session.turn, session.target_turns);
+
+        var input = $('exit-input');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function renderExitTranscript(messages) {
+        var msgs = $('exit-messages');
+        if (!msgs) return;
+        var html = '';
+        (messages || []).forEach(function (m) {
+            var who = m.role === 'assistant' ? 'manager' : 'student';
+            html += '<div class="interview-msg interview-msg-' + who + '">' +
+                '<div class="interview-msg-bubble">' +
+                escapeHtml(m.content).replace(/\n/g, '<br>') +
+                '</div></div>';
+        });
+        msgs.innerHTML = html;
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function appendExitMessage(role, content) {
+        var msgs = $('exit-messages');
+        if (!msgs) return;
+        var who = role === 'assistant' ? 'manager' : 'student';
+        var div = document.createElement('div');
+        div.className = 'interview-msg interview-msg-' + who;
+        div.innerHTML = '<div class="interview-msg-bubble">' +
+            escapeHtml(content).replace(/\n/g, '<br>') + '</div>';
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function appendExitThinking() {
+        var msgs = $('exit-messages');
+        if (!msgs) return;
+        var div = document.createElement('div');
+        div.className = 'interview-msg interview-msg-manager';
+        div.id = 'exit-thinking';
+        div.innerHTML = '<div class="interview-msg-bubble interview-thinking">' +
+            '<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function removeExitThinking() {
+        var t = $('exit-thinking');
+        if (t) t.remove();
+    }
+
+    function updateExitTurnIndicator(turn, target) {
+        var el = $('exit-turn-indicator');
+        if (!el) return;
+        var displayTurn = Math.max(turn, 0);
+        el.textContent = 'Question ' + (displayTurn + 1) + ' of ~' + (target || 8);
+    }
+
+    function sendExitMessage(e) {
+        e.preventDefault();
+        if (!exitState.session) return;
+        var input = $('exit-input');
+        var sendBtn = $('exit-send-btn');
+        var msg = (input.value || '').trim();
+        if (!msg) return;
+
+        appendExitMessage('user', msg);
+        input.value = '';
+        sendBtn.disabled = true;
+        input.disabled = true;
+        appendExitThinking();
+
+        fetch(CONFIG.API_BASE + '/api/v1/exit/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: exitState.session.session_id,
+                message: msg,
+            }),
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Reply failed');
+                return r.json();
+            })
+            .then(function (reply) {
+                removeExitThinking();
+                appendExitMessage('assistant', reply.reply);
+                updateExitTurnIndicator(reply.turn, exitState.session.target_turns);
+                sendBtn.disabled = false;
+                input.disabled = false;
+                input.focus();
+                if (reply.suggested_wrap_up) {
+                    var ind = $('exit-turn-indicator');
+                    if (ind && ind.textContent.indexOf('wrapping up') === -1) {
+                        ind.textContent += ' (wrapping up)';
+                    }
+                }
+            })
+            .catch(function (err) {
+                removeExitThinking();
+                appendExitMessage('assistant',
+                    '[Connection error: ' + err.message + '. Try again.]');
+                sendBtn.disabled = false;
+                input.disabled = false;
+            });
+    }
+
+    function endExitInterview() {
+        if (!exitState.session) return;
+        if (!confirm('End the conversation now? You won\'t be able to add more.')) {
+            return;
+        }
+        var endBtn = $('exit-end-btn');
+        endBtn.disabled = true;
+        endBtn.textContent = 'Closing...';
+        appendExitThinking();
+
+        fetch(CONFIG.API_BASE + '/api/v1/exit/' + exitState.session.session_id + '/end', {
+            method: 'POST',
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Could not end');
+                return r.json();
+            })
+            .then(function (session) {
+                removeExitThinking();
+                exitState.session = session;
+                showExitResult(session);
+                loadStudentState();
+            })
+            .catch(function (err) {
+                removeExitThinking();
+                alert('Failed: ' + err.message);
+                endBtn.disabled = false;
+                endBtn.textContent = 'End conversation';
+            });
+    }
+
+    function showExitResult(session) {
+        $('exit-pre').classList.add('hidden');
+        $('exit-chat').classList.add('hidden');
+        var result = $('exit-result');
+        result.classList.remove('hidden');
+
+        var fb = session.feedback || {};
+        var feedback = fb.feedback || {};
+        var html =
+            '<h2>Internship complete</h2>' +
+            '<p class="interview-result-summary">' +
+            escapeHtml(fb.summary || '') + '</p>' +
+            '<div class="interview-result-score">' +
+            'Reflection score: <strong>' + (session.final_score || 0) + '/100</strong>' +
+            '</div>' +
+            renderFeedbackSection('What you brought to the conversation', feedback.strengths) +
+            renderFeedbackSection('Things to keep working on', feedback.gaps) +
+            '<div class="action-buttons">' +
+            '<button id="exit-back-btn" class="btn btn-primary">Back to dashboard</button>' +
+            '</div>';
+        result.innerHTML = html;
+        var backBtn = $('exit-back-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', function () {
+                switchView('dashboard');
+            });
+        }
+    }
+
+    // Wire form + end button (one-time bind, idempotent)
+    var exitForm = $('exit-input-form');
+    if (exitForm) exitForm.addEventListener('submit', sendExitMessage);
+    var exitEndBtn = $('exit-end-btn');
+    if (exitEndBtn) exitEndBtn.addEventListener('click', endExitInterview);
+
+    // --- Mid-placement performance review ---
+
+    var perfState = { session: null };
+
+    function loadPerfReview() {
+        var s = state.student;
+        var pre = $('perf-pre');
+        var chat = $('perf-chat');
+        var result = $('perf-result');
+        if (!pre || !chat || !result) return;
+
+        if (!s || !s.active_application) {
+            pre.classList.remove('hidden');
+            chat.classList.add('hidden');
+            result.classList.add('hidden');
+            pre.innerHTML = '<div class="placeholder">No active placement.</div>';
+            return;
+        }
+        var app = s.active_application;
+
+        api('/api/v1/perf-review/application/' + app.id)
+            .then(function (session) {
+                perfState.session = session;
+                if (session.status === 'completed') {
+                    showPerfResult(session);
+                } else {
+                    showPerfChat(session);
+                }
+            })
+            .catch(function () {
+                renderPerfPre(app);
+            });
+    }
+
+    function renderPerfPre(app) {
+        var pre = $('perf-pre');
+        var chat = $('perf-chat');
+        var result = $('perf-result');
+        pre.classList.remove('hidden');
+        chat.classList.add('hidden');
+        result.classList.add('hidden');
+        pre.innerHTML =
+            '<h2>Mid-placement check-in</h2>' +
+            '<p>Your mentor wants a quick chat now that you\'re a couple ' +
+            'of tasks in. This is a <em>coaching</em> conversation, not ' +
+            'an evaluation — they\'ll talk you through what\'s working and ' +
+            'what to focus on for your next task.</p>' +
+            '<p>It\'s short — about 5 turns, maybe 5 minutes. Drop in ' +
+            'whenever suits.</p>' +
+            '<div class="action-buttons">' +
+            '<button id="perf-begin-btn" class="btn btn-primary btn-cta">' +
+            'Start the check-in</button>' +
+            '</div>';
+        $('perf-begin-btn').addEventListener('click', function () {
+            startPerfReview(app);
+        });
+    }
+
+    function startPerfReview(app) {
+        var btn = $('perf-begin-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Connecting...';
+        }
+        fetch(CONFIG.API_BASE + '/api/v1/perf-review/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ application_id: app.id }),
+        })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.json().then(function (e) {
+                        throw new Error(e.detail || 'Could not start');
+                    });
+                }
+                return r.json();
+            })
+            .then(function (session) {
+                perfState.session = session;
+                showPerfChat(session);
+            })
+            .catch(function (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Start the check-in';
+                }
+                alert('Could not start: ' + err.message);
+            });
+    }
+
+    function showPerfChat(session) {
+        $('perf-pre').classList.add('hidden');
+        $('perf-chat').classList.remove('hidden');
+        $('perf-result').classList.add('hidden');
+
+        $('perf-manager-name').textContent = session.manager_name;
+        $('perf-manager-role').textContent = session.manager_role
+            ? session.manager_role + ' at ' + session.company_name
+            : session.company_name;
+
+        renderPerfTranscript(session.transcript);
+        updatePerfTurnIndicator(session.turn, session.target_turns);
+
+        var input = $('perf-input');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function renderPerfTranscript(messages) {
+        var msgs = $('perf-messages');
+        if (!msgs) return;
+        var html = '';
+        (messages || []).forEach(function (m) {
+            var who = m.role === 'assistant' ? 'manager' : 'student';
+            html += '<div class="interview-msg interview-msg-' + who + '">' +
+                '<div class="interview-msg-bubble">' +
+                escapeHtml(m.content).replace(/\n/g, '<br>') +
+                '</div></div>';
+        });
+        msgs.innerHTML = html;
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function appendPerfMessage(role, content) {
+        var msgs = $('perf-messages');
+        if (!msgs) return;
+        var who = role === 'assistant' ? 'manager' : 'student';
+        var div = document.createElement('div');
+        div.className = 'interview-msg interview-msg-' + who;
+        div.innerHTML = '<div class="interview-msg-bubble">' +
+            escapeHtml(content).replace(/\n/g, '<br>') + '</div>';
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function appendPerfThinking() {
+        var msgs = $('perf-messages');
+        if (!msgs) return;
+        var div = document.createElement('div');
+        div.className = 'interview-msg interview-msg-manager';
+        div.id = 'perf-thinking';
+        div.innerHTML = '<div class="interview-msg-bubble interview-thinking">' +
+            '<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function removePerfThinking() {
+        var t = $('perf-thinking');
+        if (t) t.remove();
+    }
+
+    function updatePerfTurnIndicator(turn, target) {
+        var el = $('perf-turn-indicator');
+        if (!el) return;
+        el.textContent = 'Turn ' + (Math.max(turn, 0) + 1) + ' of ~' + (target || 5);
+    }
+
+    function sendPerfMessage(e) {
+        e.preventDefault();
+        if (!perfState.session) return;
+        var input = $('perf-input');
+        var sendBtn = $('perf-send-btn');
+        var msg = (input.value || '').trim();
+        if (!msg) return;
+
+        appendPerfMessage('user', msg);
+        input.value = '';
+        sendBtn.disabled = true;
+        input.disabled = true;
+        appendPerfThinking();
+
+        fetch(CONFIG.API_BASE + '/api/v1/perf-review/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: perfState.session.session_id,
+                message: msg,
+            }),
+        })
+            .then(function (r) { if (!r.ok) throw new Error('Reply failed'); return r.json(); })
+            .then(function (reply) {
+                removePerfThinking();
+                appendPerfMessage('assistant', reply.reply);
+                updatePerfTurnIndicator(reply.turn, perfState.session.target_turns);
+                sendBtn.disabled = false;
+                input.disabled = false;
+                input.focus();
+                if (reply.suggested_wrap_up) {
+                    var ind = $('perf-turn-indicator');
+                    if (ind && ind.textContent.indexOf('wrapping up') === -1) {
+                        ind.textContent += ' (wrapping up)';
+                    }
+                }
+            })
+            .catch(function (err) {
+                removePerfThinking();
+                appendPerfMessage('assistant', '[Connection error: ' + err.message + '. Try again.]');
+                sendBtn.disabled = false;
+                input.disabled = false;
+            });
+    }
+
+    function endPerfReview() {
+        if (!perfState.session) return;
+        if (!confirm('End the check-in now?')) return;
+        var endBtn = $('perf-end-btn');
+        endBtn.disabled = true;
+        endBtn.textContent = 'Closing...';
+        appendPerfThinking();
+
+        fetch(CONFIG.API_BASE + '/api/v1/perf-review/' + perfState.session.session_id + '/end', {
+            method: 'POST',
+        })
+            .then(function (r) { if (!r.ok) throw new Error('Could not end'); return r.json(); })
+            .then(function (session) {
+                removePerfThinking();
+                perfState.session = session;
+                showPerfResult(session);
+            })
+            .catch(function (err) {
+                removePerfThinking();
+                alert('Failed: ' + err.message);
+                endBtn.disabled = false;
+                endBtn.textContent = 'End check-in';
+            });
+    }
+
+    function showPerfResult(session) {
+        $('perf-pre').classList.add('hidden');
+        $('perf-chat').classList.add('hidden');
+        var result = $('perf-result');
+        result.classList.remove('hidden');
+
+        var fb = session.feedback || {};
+        var keyFocus = fb.key_focus || '';
+        var html =
+            '<h2>Check-in done</h2>' +
+            '<p class="interview-result-summary">' +
+            'Thanks for taking the time. Carry the conversation into your ' +
+            'next task and see how it lands.</p>';
+        if (keyFocus && keyFocus.indexOf('(') !== 0) {
+            html += '<div class="interview-result-score">Focus for task 3: <strong>' +
+                escapeHtml(keyFocus) + '</strong></div>';
+        }
+        html += '<div class="action-buttons">' +
+            '<button id="perf-back-btn" class="btn btn-primary">Back to dashboard</button>' +
+            '</div>';
+        result.innerHTML = html;
+        var back = $('perf-back-btn');
+        if (back) back.addEventListener('click', function () { switchView('dashboard'); });
+    }
+
+    var perfForm = $('perf-input-form');
+    if (perfForm) perfForm.addEventListener('submit', sendPerfMessage);
+    var perfEndBtn = $('perf-end-btn');
+    if (perfEndBtn) perfEndBtn.addEventListener('click', endPerfReview);
 
     // --- Event bindings ---
     els.signinForm.addEventListener('submit', function (e) {

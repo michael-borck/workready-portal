@@ -32,7 +32,7 @@
 
             <aside class="signin-right" aria-label="What to expect">
                 <p class="signin-aside-label">/&nbsp;&nbsp;What to expect&nbsp;&nbsp;/</p>
-                <h2 class="signin-aside-title">A four-stage journey through real internship territory.</h2>
+                <h2 class="signin-aside-title">Six stages through real internship territory.</h2>
 
                 <ol class="journey">
                     <li class="journey-step">
@@ -45,22 +45,36 @@
                     <li class="journey-step">
                         <div class="journey-num">02</div>
                         <div class="journey-body">
-                            <h3>Wait on the outcome</h3>
-                            <p>Application updates land in your <strong>personal inbox</strong>. Some you'll get; some you won't.</p>
+                            <h3>Resume outcome</h3>
+                            <p>Application updates land in your <strong>personal inbox</strong> with feedback on what worked and what didn't. Some you'll get; some you won't.</p>
                         </div>
                     </li>
                     <li class="journey-step">
                         <div class="journey-num">03</div>
                         <div class="journey-body">
-                            <h3>Interview &amp; start work</h3>
-                            <p>If you're shortlisted, you'll have a <strong>real interview conversation</strong>, then begin your simulated internship.</p>
+                            <h3>Interview</h3>
+                            <p>If you're shortlisted, you'll have a <strong>real interview conversation</strong> with the hiring manager — typed, but properly back-and-forth.</p>
                         </div>
                     </li>
                     <li class="journey-step">
                         <div class="journey-num">04</div>
                         <div class="journey-body">
-                            <h3>Complete the internship</h3>
-                            <p>Take on tasks, work with your team, and finish the cycle with the experience to do it for real.</p>
+                            <h3>Work tasks</h3>
+                            <p>Three progressively harder briefs from your mentor, with feedback on each. Halfway through you'll have a quick <strong>mid-placement coaching chat</strong> before tackling the last one.</p>
+                        </div>
+                    </li>
+                    <li class="journey-step">
+                        <div class="journey-num">05</div>
+                        <div class="journey-body">
+                            <h3>Lunchroom moments</h3>
+                            <p>Your colleagues will invite you to <strong>informal team lunches</strong> — group chats where you get to know the team off the clock. The bit most internships forget to teach.</p>
+                        </div>
+                    </li>
+                    <li class="journey-step">
+                        <div class="journey-num">06</div>
+                        <div class="journey-body">
+                            <h3>Exit interview</h3>
+                            <p>Wrap up with a short <strong>reflective conversation</strong> with HR. Not a test — a chance to think back on what you learned and what you'd do differently.</p>
                         </div>
                     </li>
                 </ol>
@@ -153,6 +167,19 @@
                             <span class="nav-icon">&#128101;</span>
                             Team
                         </button>
+                        <button class="nav-item hidden" data-view="lunchroom" id="nav-lunchroom">
+                            <span class="nav-icon">&#127869;</span>
+                            Lunchroom
+                            <span class="nav-badge hidden" id="nav-lunchroom-badge"></span>
+                        </button>
+                        <button class="nav-item hidden" data-view="perf-review" id="nav-perf-review">
+                            <span class="nav-icon">&#128173;</span>
+                            Mid-placement check-in
+                        </button>
+                        <button class="nav-item hidden" data-view="exit-interview" id="nav-exit-interview">
+                            <span class="nav-icon">&#128172;</span>
+                            Exit Interview
+                        </button>
                         <button class="nav-item" data-view="primer">
                             <span class="nav-icon">&#127918;</span>
                             Play the Primer
@@ -177,15 +204,22 @@
 
                 <div class="sidebar-section">
                     <h4>Support Tools</h4>
+                    <p class="sidebar-section-blurb">Local apps to install on your computer.</p>
                     <!-- href values populated from config.js at boot — do not hardcode -->
-                    <a href="#" target="_blank" rel="noopener" id="talk-buddy-link" class="sidebar-link">
+                    <a href="#" target="_blank" rel="noopener" id="talk-buddy-link" class="sidebar-link sidebar-link-tool">
                         <span class="sidebar-link-icon">&#127908;</span>
-                        Talk Buddy (Practice Interviews)
+                        <span class="sidebar-link-body">
+                            <span class="sidebar-link-title">Talk Buddy</span>
+                            <span class="sidebar-link-hint">Rehearse interviews and lunchroom small talk</span>
+                        </span>
                         <span class="sidebar-link-ext" aria-hidden="true">&#8599;</span>
                     </a>
-                    <a href="#" target="_blank" rel="noopener" id="career-compass-link" class="sidebar-link">
+                    <a href="#" target="_blank" rel="noopener" id="career-compass-link" class="sidebar-link sidebar-link-tool">
                         <span class="sidebar-link-icon">&#129517;</span>
-                        Career Compass (Explore Careers)
+                        <span class="sidebar-link-body">
+                            <span class="sidebar-link-title">Career Compass</span>
+                            <span class="sidebar-link-hint">Gap-analyze your resume against a job</span>
+                        </span>
                         <span class="sidebar-link-ext" aria-hidden="true">&#8599;</span>
                     </a>
                 </div>
@@ -289,6 +323,77 @@
                     </div>
                     <div id="interview-result" class="interview-result hidden">
                         <!-- Post-completion feedback panel -->
+                    </div>
+                </div>
+
+                <!-- Mid-placement performance review view -->
+                <div id="view-perf-review" class="view view-interview hidden">
+                    <div id="perf-pre" class="interview-pre"></div>
+                    <div id="perf-chat" class="interview-chat hidden">
+                        <header class="interview-header">
+                            <div class="interview-manager">
+                                <div class="interview-manager-name" id="perf-manager-name"></div>
+                                <div class="interview-manager-role" id="perf-manager-role"></div>
+                            </div>
+                            <div class="interview-progress">
+                                <span id="perf-turn-indicator">Turn 1 of ~5</span>
+                                <button id="perf-end-btn" class="btn btn-secondary">End check-in</button>
+                            </div>
+                        </header>
+                        <div class="interview-messages" id="perf-messages"></div>
+                        <form class="interview-input" id="perf-input-form">
+                            <textarea
+                                id="perf-input"
+                                placeholder="Type your reply..."
+                                rows="3"
+                                required></textarea>
+                            <button type="submit" class="btn btn-primary" id="perf-send-btn">Send</button>
+                        </form>
+                    </div>
+                    <div id="perf-result" class="interview-result hidden"></div>
+                </div>
+
+                <!-- Exit Interview view (Stage 6) -->
+                <div id="view-exit-interview" class="view view-interview hidden">
+                    <div id="exit-pre" class="interview-pre">
+                        <!-- Pre-interview state -->
+                    </div>
+                    <div id="exit-chat" class="interview-chat hidden">
+                        <header class="interview-header">
+                            <div class="interview-manager">
+                                <div class="interview-manager-name" id="exit-manager-name"></div>
+                                <div class="interview-manager-role" id="exit-manager-role"></div>
+                            </div>
+                            <div class="interview-progress">
+                                <span id="exit-turn-indicator">Question 1 of ~8</span>
+                                <button id="exit-end-btn" class="btn btn-secondary">End conversation</button>
+                            </div>
+                        </header>
+                        <div class="interview-messages" id="exit-messages"></div>
+                        <form class="interview-input" id="exit-input-form">
+                            <textarea
+                                id="exit-input"
+                                placeholder="Take your time..."
+                                rows="3"
+                                required></textarea>
+                            <button type="submit" class="btn btn-primary" id="exit-send-btn">Send</button>
+                        </form>
+                    </div>
+                    <div id="exit-result" class="interview-result hidden">
+                        <!-- Post-completion summary -->
+                    </div>
+                </div>
+
+                <!-- Lunchroom view -->
+                <div id="view-lunchroom" class="view view-lunchroom hidden">
+                    <div class="view-header-row">
+                        <div>
+                            <h2>Lunchroom</h2>
+                            <p class="view-subtitle">Informal team lunches — drop in, chat, get to know colleagues</p>
+                        </div>
+                    </div>
+                    <div id="lunchroom-body">
+                        <!-- Rendered by app.js: list of sessions OR active chat room -->
                     </div>
                 </div>
 

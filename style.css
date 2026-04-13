@@ -768,6 +768,43 @@ ul, ol { list-style: none; }
     line-height: 1.5;
 }
 
+.sidebar-section-blurb {
+    padding: 0 0.85rem 0.4rem;
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--sim-muted);
+    font-style: italic;
+}
+
+.sidebar-link-tool {
+    align-items: flex-start;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.sidebar-link-tool .sidebar-link-icon {
+    margin-top: 0.15rem;
+}
+
+.sidebar-link-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sidebar-link-title {
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.sidebar-link-hint {
+    font-size: 0.72rem;
+    color: var(--sim-muted);
+    line-height: 1.3;
+}
+
 /* ============================================================
    CONTENT AREA
    ============================================================ */
@@ -1758,4 +1795,289 @@ button.sidebar-link {
     .signin-headline {
         font-size: 1.6rem;
     }
+}
+
+/* --- Lunchroom (Stage 5a invitation + 5b chat) ------------------------ */
+
+.view-lunchroom { max-width: 900px; }
+
+.lunchroom-section { margin-bottom: 2.5rem; }
+
+.lunchroom-section-title {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    margin: 0 0 0.75rem;
+}
+
+.lunchroom-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    background: #fff;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.lunchroom-card-invited {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+}
+
+.lunchroom-card-scheduled { border-left: 4px solid #10b981; }
+.lunchroom-card-past { opacity: 0.75; }
+
+.lunchroom-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.lunchroom-card-header h4 { margin: 0; font-size: 1.1rem; }
+
+.lunchroom-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: #e0e7ff;
+    color: #3730a3;
+    white-space: nowrap;
+}
+
+.lunchroom-badge-invited { background: #fed7aa; color: #9a3412; }
+.lunchroom-badge-muted { background: #f3f4f6; color: #6b7280; }
+
+.lunchroom-detail {
+    font-style: italic;
+    color: #6b7280;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.lunchroom-participants {
+    color: #4b5563;
+    font-size: 0.9rem;
+    margin: 0.25rem 0 0.75rem;
+}
+
+.lunchroom-prompt {
+    font-size: 0.9rem;
+    color: #374151;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.lunchroom-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.lunchroom-card-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.lunchroom-practice-link {
+    margin-left: auto;
+    font-size: 0.85rem;
+}
+
+.lunchroom-when {
+    font-weight: 600;
+    color: #065f46;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.lunchroom-muted { color: #9ca3af; font-size: 0.9rem; }
+
+.lunchroom-empty { text-align: center; padding: 3rem 1.5rem; }
+.lunchroom-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+/* Chat room */
+
+.lunchroom-room {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.lunchroom-room-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafbfc;
+}
+
+.lunchroom-room-title { flex: 1 1 auto; min-width: 0; }
+.lunchroom-room-title h3 { margin: 0; font-size: 1.1rem; }
+
+.lunchroom-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+}
+
+.lunchroom-chip {
+    color: #fff;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.lunchroom-room-status {
+    flex: 0 0 auto;
+    font-size: 0.85rem;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: lunchroom-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lunchroom-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.lunchroom-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    background: #f9fafb;
+}
+
+.lunchroom-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 78%;
+    align-self: flex-start;
+}
+
+.lunchroom-msg-student { align-self: flex-end; align-items: flex-end; }
+
+.lunchroom-msg-author {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--author-color, #374151);
+    margin-bottom: 0.2rem;
+    padding: 0 0.4rem;
+}
+
+.lunchroom-msg-student .lunchroom-msg-author { color: #6b7280; }
+
+.lunchroom-msg-bubble {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0.65rem 0.9rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.lunchroom-msg-student .lunchroom-msg-bubble {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+
+.lunchroom-wind-down {
+    padding: 0.5rem 1rem;
+    background: #fef3c7;
+    color: #92400e;
+    text-align: center;
+    font-size: 0.85rem;
+    border-top: 1px solid #fde68a;
+}
+
+.lunchroom-composer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-top: 1px solid #e5e7eb;
+    background: #fff;
+}
+
+.lunchroom-composer textarea {
+    flex: 1 1 auto;
+    resize: none;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.lunchroom-composer textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.lunchroom-composer-closed {
+    padding: 1rem;
+    text-align: center;
+    color: #6b7280;
+    font-style: italic;
+    border-top: 1px solid #e5e7eb;
+    background: #fafbfc;
+}
+
+.dashboard-resign-row {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px dotted #e5e7eb;
+    text-align: right;
+}
+.dashboard-resign-link {
+    color: #9ca3af !important;
+    font-size: 0.78rem !important;
+    text-decoration: none !important;
+}
+.dashboard-resign-link:hover {
+    color: #dc2626 !important;
+    text-decoration: underline !important;
+}
+
+.nav-badge {
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.7rem;
+    border-radius: 999px;
+    padding: 0 0.4rem;
+    margin-left: auto;
+}
+
+@media (max-width: 720px) {
+    .lunchroom-room { height: calc(100vh - 140px); }
+    .lunchroom-msg { max-width: 88%; }
+    .lunchroom-room-status { display: none; }
 }

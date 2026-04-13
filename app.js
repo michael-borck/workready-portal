@@ -70,6 +70,8 @@
         unreadWork: $('unread-work'),
         intranetLink: $('intranet-link'),
         jobBoardLink: $('job-board-link'),
+        talkBuddyLink: $('talk-buddy-link'),
+        careerCompassLink: $('career-compass-link'),
         dashboardTitle: $('dashboard-title'),
         dashboardContent: $('dashboard-content'),
         inboxPersonalList: $('inbox-personal-list'),
@@ -1320,6 +1322,24 @@
                 sendInterviewMessage(e);
             }
         });
+    }
+
+    // --- Wire static external links from CONFIG ---
+    // These sidebar links don't depend on student state, so we set them
+    // once at boot. Keeps config.js as the single source of truth for
+    // external URLs — no hardcoded hrefs to drift out of sync.
+    // (jobBoardLink gets re-set per-render once we know the student's
+    // email, so we can append ?student= for personalised state — see
+    // the render loop above. This boot assignment is the pre-signin
+    // fallback so the link works even before the student is known.)
+    if (els.jobBoardLink && CONFIG.JOBS_URL) {
+        els.jobBoardLink.href = CONFIG.JOBS_URL;
+    }
+    if (els.talkBuddyLink && CONFIG.TALK_BUDDY_URL) {
+        els.talkBuddyLink.href = CONFIG.TALK_BUDDY_URL;
+    }
+    if (els.careerCompassLink && CONFIG.CAREER_COMPASS_URL) {
+        els.careerCompassLink.href = CONFIG.CAREER_COMPASS_URL;
     }
 
     // --- Initial load ---

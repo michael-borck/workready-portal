@@ -1214,7 +1214,6 @@
                 if (result.status === 'bounced') {
                     composeResult.className = 'compose-result compose-bounce';
                     var msg = '↩ Message bounced: ' + (result.bounce_reason || 'invalid address');
-                    if (result.suggestion) msg += '\n\nDid you mean: ' + result.suggestion + '?';
                     composeResult.textContent = msg;
                 } else {
                     composeResult.className = 'compose-result compose-success';

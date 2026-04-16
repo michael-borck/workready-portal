@@ -126,41 +126,63 @@
                     </nav>
                 </div>
 
-                <div class="sidebar-section">
-                    <h4>&#9993; Personal Email</h4>
-                    <nav class="nav">
-                        <button class="nav-item" data-view="inbox-personal">
-                            Inbox
-                            <span id="unread-personal" class="badge hidden">0</span>
-                        </button>
-                        <button class="nav-item" data-view="sent">
-                            Sent
-                        </button>
-                    </nav>
+                <div class="sidebar-section" id="nav-mail-section">
+                    <h4 class="sidebar-collapse-toggle" id="mail-toggle">&#9993; Mail <span class="collapse-arrow">&#9662;</span></h4>
+                    <div class="sidebar-collapsible" id="mail-body">
+                        <!-- Pre-hire: flat inbox/sent. Post-hire: sub-groups injected by JS -->
+                        <nav class="nav" id="mail-nav-simple">
+                            <button class="nav-item" data-view="inbox-personal">
+                                Inbox
+                                <span id="unread-personal" class="badge hidden">0</span>
+                            </button>
+                            <button class="nav-item" data-view="sent">
+                                Sent
+                            </button>
+                        </nav>
+                        <div id="mail-nav-split" class="hidden">
+                            <div class="sidebar-sub-section">
+                                <h5 class="sidebar-collapse-toggle sub-toggle" id="mail-personal-toggle">Personal <span class="collapse-arrow">&#9656;</span></h5>
+                                <nav class="nav sidebar-collapsible collapsed" id="mail-personal-body">
+                                    <button class="nav-item" data-view="inbox-personal">
+                                        Inbox
+                                        <span id="unread-personal-split" class="badge hidden">0</span>
+                                    </button>
+                                    <button class="nav-item" data-view="sent">
+                                        Sent
+                                    </button>
+                                </nav>
+                            </div>
+                            <div class="sidebar-sub-section">
+                                <h5 class="sidebar-collapse-toggle sub-toggle" id="mail-work-toggle">Work <span class="collapse-arrow">&#9656;</span></h5>
+                                <nav class="nav sidebar-collapsible collapsed" id="mail-work-body">
+                                    <button class="nav-item" data-view="inbox-work" id="nav-inbox-work">
+                                        Inbox
+                                        <span id="unread-work" class="badge hidden">0</span>
+                                    </button>
+                                    <button class="nav-item" data-view="sent-work">
+                                        Sent
+                                    </button>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="sidebar-section hidden" id="nav-work-email-section">
-                    <h4>&#128188; Work Email</h4>
-                    <nav class="nav">
-                        <button class="nav-item" data-view="inbox-work" id="nav-inbox-work">
-                            Inbox
-                            <span id="unread-work" class="badge hidden">0</span>
-                        </button>
-                        <button class="nav-item" data-view="sent-work">
-                            Sent
-                        </button>
-                    </nav>
+                <!-- Stage 7: Teams -->
+                <div class="sidebar-section hidden" id="nav-teams-section">
+                    <h4 class="sidebar-collapse-toggle" id="teams-toggle">&#128101; Teams <span class="collapse-arrow">&#9662;</span></h4>
+                    <div class="sidebar-collapsible" id="teams-body">
+                        <nav class="nav" id="teams-member-list">
+                            <!-- populated by renderTeamsSidebar() -->
+                        </nav>
+                        <div class="sidebar-sub-section">
+                            <h5 class="sidebar-collapse-toggle sub-toggle" id="teams-org-toggle">Wider Org <span class="collapse-arrow">&#9656;</span></h5>
+                            <div class="sidebar-collapsible collapsed" id="teams-org-list">
+                                <!-- populated by renderTeamsSidebar() -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-            <!-- Stage 7: Team directory -->
-            <div class="sidebar-section hidden" id="nav-team-section">
-              <h4>&#128101; Your Team</h4>
-              <div class="nav-team-list" id="nav-team-list"></div>
-              <div class="nav-section-title nav-org-title">
-                <span>Wider Organisation</span>
-              </div>
-              <div class="nav-org-list nav-org-list-collapsed" id="nav-org-list"></div>
-            </div>
 
                 <div class="sidebar-section">
                     <h4>Workspace</h4>
@@ -168,27 +190,6 @@
                         <button class="nav-item hidden" data-view="tasks" id="nav-tasks">
                             <span class="nav-icon">&#128221;</span>
                             Tasks
-                        </button>
-                        <button class="nav-item hidden" data-view="interview" id="nav-interview">
-                            <span class="nav-icon">&#127908;</span>
-                            Interview
-                        </button>
-                        <button class="nav-item hidden" data-view="team" id="nav-team">
-                            <span class="nav-icon">&#128101;</span>
-                            Team
-                        </button>
-                        <button class="nav-item hidden" data-view="lunchroom" id="nav-lunchroom">
-                            <span class="nav-icon">&#127869;</span>
-                            Lunchroom
-                            <span class="nav-badge hidden" id="nav-lunchroom-badge"></span>
-                        </button>
-                        <button class="nav-item hidden" data-view="perf-review" id="nav-perf-review">
-                            <span class="nav-icon">&#128173;</span>
-                            Mid-placement check-in
-                        </button>
-                        <button class="nav-item hidden" data-view="exit-interview" id="nav-exit-interview">
-                            <span class="nav-icon">&#128172;</span>
-                            Exit Interview
                         </button>
                         <button class="nav-item" data-view="primer">
                             <span class="nav-icon">&#127918;</span>
@@ -301,6 +302,34 @@
                 <div id="view-team" class="view hidden">
                     <h2>Your Team</h2>
                     <div class="placeholder">Team view coming soon. You'll see your colleagues here — both other students in your intake and AI characters.</div>
+                </div>
+
+                <div id="view-teams" class="view hidden">
+                    <div id="teams-landing" class="teams-landing">
+                        <!-- populated by renderTeamsLanding() -->
+                    </div>
+                    <div id="teams-conversation" class="teams-conversation hidden">
+                        <div class="teams-conv-header" id="teams-conv-header">
+                            <div class="teams-conv-character">
+                                <span class="presence-dot" id="teams-conv-presence"></span>
+                                <div>
+                                    <span class="teams-conv-name" id="teams-conv-name"></span>
+                                    <span class="teams-conv-role" id="teams-conv-role"></span>
+                                </div>
+                            </div>
+                            <div class="teams-conv-actions">
+                                <button class="btn btn-sm" id="teams-conv-email">Email</button>
+                                <button class="btn btn-sm" id="teams-conv-back">Back</button>
+                            </div>
+                        </div>
+                        <div class="teams-conv-messages" id="teams-conv-messages">
+                            <!-- bubbles populated by renderTeamsChat() -->
+                        </div>
+                        <form class="teams-conv-composer" id="teams-conv-composer">
+                            <textarea class="teams-conv-input" id="teams-conv-input" placeholder="Type a message..." rows="2" required></textarea>
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Interview view -->
@@ -468,25 +497,6 @@
             </form>
         </div>
     </div>
-
-  <!-- Stage 7: Chat drawer -->
-  <aside class="chat-drawer hidden" id="chat-drawer">
-    <header class="chat-drawer-header">
-      <div class="chat-drawer-character">
-        <span class="chat-presence-dot" id="chat-drawer-presence"></span>
-        <div>
-          <div class="chat-drawer-name" id="chat-drawer-name"></div>
-          <div class="chat-drawer-role" id="chat-drawer-role"></div>
-        </div>
-      </div>
-      <button class="chat-drawer-close" id="chat-drawer-close" aria-label="Close">&times;</button>
-    </header>
-    <div class="chat-drawer-messages" id="chat-drawer-messages"></div>
-    <form class="chat-drawer-composer" id="chat-drawer-composer">
-      <textarea class="chat-drawer-input" id="chat-drawer-input" placeholder="Type a message..." rows="2" required></textarea>
-      <button type="submit" class="btn btn-primary chat-drawer-send">Send</button>
-    </form>
-  </aside>
 
     <script src="config.js"></script>
     <script src="app.js"></script>

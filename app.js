@@ -182,14 +182,14 @@
         toggle(els.navTeam, hired);
         toggle($('nav-lunchroom'), hired);
         var inExitStage = hired && s.active_application
-            && s.active_application.current_stage === 'exit_interview';
+            && s.active_application.current_stage === 'exit';
         toggle($('nav-exit-interview'), inExitStage || s.state === 'COMPLETED');
-        // Perf review nav: visible during work_task stage. The route
+        // Perf review nav: visible during placement stage. The route
         // returns a friendly 400 if task 2 isn't yet submitted, so the
         // student can see the nav item but won't be able to start until
         // the trigger has fired.
         var inWorkTaskStage = hired && s.active_application
-            && s.active_application.current_stage === 'work_task';
+            && s.active_application.current_stage === 'placement';
         toggle($('nav-perf-review'), inWorkTaskStage);
         toggle(els.intranetLink, hired);
 
@@ -430,9 +430,9 @@
             'job_board': 'Browsing jobs',
             'resume': 'Application under review',
             'interview': 'Interview scheduled',
-            'work_task': 'Work task in progress',
-            'lunchroom': 'Workplace social',
-            'exit_interview': 'Exit interview',
+            'placement': 'Work task in progress',
+            'mid_placement': 'Workplace social',
+            'exit': 'Exit interview',
             'completed': 'Completed',
         })[stage] || stage;
     }

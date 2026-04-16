@@ -227,7 +227,7 @@
         if (state.currentView === 'inbox-personal') loadInbox('personal');
         if (state.currentView === 'inbox-work') loadInbox('work');
 
-        loadTeamDirectory();
+        loadTeamsData();
     }
 
     function stateLabel(state) {
@@ -575,6 +575,16 @@
         if (view !== 'lunchroom') stopLunchroomPoll();
         if (view === 'exit-interview') loadExitInterview();
         if (view === 'perf-review') loadPerfReview();
+        if (view === 'teams') {
+            if (teamsState.activeSlug) {
+                openTeamsChat(teamsState.activeSlug);
+            } else {
+                renderTeamsLanding();
+            }
+        }
+        if (view !== 'teams') {
+            stopTeamsPoll();
+        }
     }
 
     function loadPrimerIframe() {
@@ -2431,178 +2441,197 @@
     }
 
     // ============================================================
-    // Stage 7: Team directory
+    // Stage 7: Teams
     // ============================================================
 
     var POST_HIRE_STAGES = ['placement', 'mid_placement', 'exit'];
 
-    var teamState = {
+    var teamsState = {
         team: [],
         org: [],
         loaded: false,
-        orgExpanded: false,
-    };
-
-    function showTeamSection() {
-        var el = document.getElementById('nav-team-section');
-        if (el) el.classList.remove('hidden');
-    }
-
-    function hideTeamSection() {
-        var el = document.getElementById('nav-team-section');
-        if (el) el.classList.add('hidden');
-    }
-
-    function loadTeamDirectory() {
-        if (!state.activeApplicationId) {
-            hideTeamSection();
-            return;
-        }
-        if (POST_HIRE_STAGES.indexOf(state.currentStage) < 0) {
-            hideTeamSection();
-            return;
-        }
-
-        showTeamSection();
-
-        api('/api/v1/team/' + state.activeApplicationId)
-            .then(function(data) {
-                teamState.team = data.team || [];
-                teamState.org = data.org || [];
-                teamState.loaded = true;
-                renderTeamDirectory();
-            })
-            .catch(function(err) {
-                console.error('loadTeamDirectory:', err);
-                var list = document.getElementById('nav-team-list');
-                if (list) list.innerHTML = '<div class="nav-team-error">Failed to load</div>';
-            });
-    }
-
-    function renderTeamDirectory() {
-        var teamList = document.getElementById('nav-team-list');
-        var orgList = document.getElementById('nav-org-list');
-        if (!teamList || !orgList) return;
-
-        if (teamState.team.length === 0) {
-            teamList.innerHTML = '<div class="nav-team-empty">No team members listed.</div>';
-        } else {
-            teamList.innerHTML = teamState.team.map(renderTeamMemberRow).join('');
-        }
-
-        orgList.innerHTML = teamState.org.map(renderOrgMemberRow).join('');
-        orgList.classList.toggle('nav-org-list-collapsed', !teamState.orgExpanded);
-
-        teamList.querySelectorAll('.nav-team-chat-btn').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var slug = btn.getAttribute('data-slug');
-                openChatDrawer(slug);
-            });
-        });
-    }
-
-    function renderTeamMemberRow(member) {
-        var dotClass = member.presence_ok ? 'presence-dot-on' : 'presence-dot-off';
-        var disabledAttr = member.presence_ok ? '' : 'disabled';
-        var tooltip = member.presence_ok
-            ? 'Chat with ' + member.name
-            : (member.availability_note || 'Not available right now');
-
-        return '<div class="nav-team-member">'
-            + '<span class="presence-dot ' + dotClass + '" title="' + escapeHtml(tooltip) + '"></span>'
-            + '<div class="nav-team-info">'
-            + '<div class="nav-team-name">' + escapeHtml(member.name) + '</div>'
-            + '<div class="nav-team-role">' + escapeHtml(member.role) + '</div>'
-            + '</div>'
-            + '<button class="nav-team-chat-btn" data-slug="' + escapeHtml(member.slug) + '" '
-            + disabledAttr + ' title="' + escapeHtml(tooltip) + '">&#128172;</button>'
-            + '</div>';
-    }
-
-    function renderOrgMemberRow(member) {
-        return '<div class="nav-org-member" title="' + escapeHtml(member.role) + '">'
-            + '<span class="nav-org-name">' + escapeHtml(member.name) + '</span>'
-            + '<span class="nav-org-role">' + escapeHtml(member.role) + '</span>'
-            + '</div>';
-    }
-
-    function wireTeamDirectoryControls() {
-        var orgTitle = document.querySelector('.nav-org-title');
-        if (orgTitle) {
-            orgTitle.addEventListener('click', function() {
-                teamState.orgExpanded = !teamState.orgExpanded;
-                renderTeamDirectory();
-            });
-        }
-    }
-
-    // ============================================================
-    // Stage 7: Chat drawer
-    // ============================================================
-
-    var chatState = {
-        open: false,
-        characterSlug: null,
-        characterName: '',
-        characterRole: '',
-        presenceOk: false,
+        activeSlug: null,
         messages: [],
         pollTimer: null,
     };
 
-    function openChatDrawer(characterSlug) {
-        var character = teamState.team.find(function(m) { return m.slug === characterSlug; });
-        if (!character) return;
+    function loadTeamsData() {
+        if (!state.activeApplicationId) return;
+        if (POST_HIRE_STAGES.indexOf(state.currentStage) < 0) return;
 
-        chatState.characterSlug = characterSlug;
-        chatState.characterName = character.name;
-        chatState.characterRole = character.role;
-        chatState.presenceOk = character.presence_ok;
-        chatState.open = true;
+        api('/api/v1/team/' + state.activeApplicationId)
+            .then(function (data) {
+                teamsState.team = data.team || [];
+                teamsState.org = data.org || [];
+                teamsState.loaded = true;
+                renderTeamsSidebar();
+                if (state.currentView === 'teams') {
+                    if (teamsState.activeSlug) {
+                        renderTeamsConversation();
+                    } else {
+                        renderTeamsLanding();
+                    }
+                }
+            })
+            .catch(function (err) {
+                console.error('loadTeamsData:', err);
+            });
+    }
 
-        var drawer = document.getElementById('chat-drawer');
-        drawer.classList.remove('hidden');
+    function renderTeamsSidebar() {
+        var list = $('teams-member-list');
+        var orgList = $('teams-org-list');
+        if (!list) return;
 
-        document.getElementById('chat-drawer-name').textContent = character.name;
-        document.getElementById('chat-drawer-role').textContent = character.role;
-        var dot = document.getElementById('chat-drawer-presence');
-        dot.className = 'chat-presence-dot ' +
-            (character.presence_ok ? 'presence-dot-on' : 'presence-dot-off');
+        list.innerHTML = teamsState.team.map(function (m) {
+            var dotClass = m.presence_ok ? 'presence-dot-on' : 'presence-dot-off';
+            var active = teamsState.activeSlug === m.slug ? ' teams-sidebar-active' : '';
+            return '<button class="nav-item teams-sidebar-member' + active + '" data-teams-slug="' + escapeHtml(m.slug) + '">'
+                + '<span class="presence-dot ' + dotClass + '"></span> '
+                + escapeHtml(m.name)
+                + '</button>';
+        }).join('');
 
-        loadChatThread();
-        startChatPolling();
+        list.querySelectorAll('.teams-sidebar-member').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var slug = btn.getAttribute('data-teams-slug');
+                openTeamsChat(slug);
+            });
+        });
 
-        var input = document.getElementById('chat-drawer-input');
+        if (orgList) {
+            orgList.innerHTML = teamsState.org.map(function (m) {
+                return '<div class="nav-org-member" title="Use your Work inbox to email ' + escapeHtml(m.name) + '">'
+                    + '<span class="nav-org-name">' + escapeHtml(m.name) + '</span>'
+                    + '<span class="nav-org-role">' + escapeHtml(m.role) + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+    }
+
+    function renderTeamsLanding() {
+        var container = $('teams-landing');
+        var convEl = $('teams-conversation');
+        if (!container) return;
+
+        container.classList.remove('hidden');
+        if (convEl) convEl.classList.add('hidden');
+        teamsState.activeSlug = null;
+        stopTeamsPoll();
+        renderTeamsSidebar();
+
+        var companyLabel = '';
+        if (state.student && state.student.active_application) {
+            companyLabel = companyName(state.student.active_application.company_slug) || '';
+        }
+
+        var html = '<div class="teams-landing-card">';
+        html += '<h2>Your Team' + (companyLabel ? ' at ' + escapeHtml(companyLabel) : '') + '</h2>';
+
+        if (teamsState.team.length === 0 && !teamsState.loaded) {
+            html += '<p class="teams-landing-empty">Loading team...</p>';
+        } else if (teamsState.team.length === 0) {
+            html += '<p class="teams-landing-empty">No team members found.</p>';
+        } else {
+            html += '<div class="teams-landing-list">';
+            teamsState.team.forEach(function (m) {
+                var dotClass = m.presence_ok ? 'presence-dot-on' : 'presence-dot-off';
+                var chatBtn = m.presence_ok
+                    ? '<button class="btn btn-sm teams-landing-chat" data-teams-slug="' + escapeHtml(m.slug) + '">Chat</button>'
+                    : '<span class="teams-landing-offline">' + escapeHtml(m.availability_note || 'Offline') + '</span>';
+                html += '<div class="teams-landing-row">'
+                    + '<span class="presence-dot ' + dotClass + '"></span>'
+                    + '<div class="teams-landing-info">'
+                    + '<span class="teams-landing-name">' + escapeHtml(m.name) + '</span>'
+                    + '<span class="teams-landing-role">' + escapeHtml(m.role) + '</span>'
+                    + '</div>'
+                    + chatBtn
+                    + '</div>';
+            });
+            html += '</div>';
+        }
+
+        if (teamsState.org.length > 0) {
+            html += '<div class="teams-landing-org">';
+            html += '<h3>Wider Organisation</h3>';
+            teamsState.org.forEach(function (m) {
+                html += '<div class="teams-landing-org-row">'
+                    + '<span class="teams-landing-name">' + escapeHtml(m.name) + '</span>'
+                    + '<span class="teams-landing-role">' + escapeHtml(m.role) + '</span>'
+                    + '</div>';
+            });
+            html += '<p class="teams-landing-hint">Wider org contacts are email-only. Use your Work inbox to reach them.</p>';
+            html += '</div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.teams-landing-chat').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openTeamsChat(btn.getAttribute('data-teams-slug'));
+            });
+        });
+    }
+
+    function openTeamsChat(slug) {
+        if (state.currentView !== 'teams') {
+            switchView('teams');
+        }
+
+        teamsState.activeSlug = slug;
+        renderTeamsSidebar();
+
+        var landing = $('teams-landing');
+        var convEl = $('teams-conversation');
+        if (landing) landing.classList.add('hidden');
+        if (convEl) convEl.classList.remove('hidden');
+
+        var member = teamsState.team.find(function (m) { return m.slug === slug; });
+        if (member) {
+            $('teams-conv-name').textContent = member.name;
+            $('teams-conv-role').textContent = member.role;
+            var dot = $('teams-conv-presence');
+            dot.className = 'presence-dot ' + (member.presence_ok ? 'presence-dot-on' : 'presence-dot-off');
+        }
+
+        loadTeamsThread();
+        startTeamsPoll();
+
+        var input = $('teams-conv-input');
         if (input) input.focus();
     }
 
-    function closeChatDrawer() {
-        chatState.open = false;
-        stopChatPolling();
-        var drawer = document.getElementById('chat-drawer');
-        if (drawer) drawer.classList.add('hidden');
+    function renderTeamsConversation() {
+        // Re-render when data refreshes while conversation is already open
+        var landing = $('teams-landing');
+        var convEl = $('teams-conversation');
+        if (landing) landing.classList.add('hidden');
+        if (convEl) convEl.classList.remove('hidden');
+        loadTeamsThread();
     }
 
-    function loadChatThread() {
-        if (!chatState.characterSlug || !state.activeApplicationId) return;
+    function loadTeamsThread() {
+        if (!teamsState.activeSlug || !state.activeApplicationId) return;
 
-        api('/api/v1/chat/thread/' +
-            state.activeApplicationId + '/' +
-            encodeURIComponent(chatState.characterSlug))
-            .then(function(data) {
-                chatState.messages = data.messages || [];
-                chatState.presenceOk = data.presence_ok;
-                renderChatThread();
+        api('/api/v1/chat/thread/' + state.activeApplicationId + '/' + encodeURIComponent(teamsState.activeSlug))
+            .then(function (data) {
+                teamsState.messages = data.messages || [];
+                renderTeamsChat();
             })
-            .catch(function(err) { console.error('loadChatThread:', err); });
+            .catch(function (err) { console.error('loadTeamsThread:', err); });
     }
 
-    function renderChatThread() {
-        var box = document.getElementById('chat-drawer-messages');
+    function renderTeamsChat() {
+        var box = $('teams-conv-messages');
         if (!box) return;
 
-        box.innerHTML = chatState.messages.map(function(m) {
+        if (teamsState.messages.length === 0) {
+            box.innerHTML = '<div class="teams-conv-empty">No messages yet. Say hello!</div>';
+            return;
+        }
+
+        box.innerHTML = teamsState.messages.map(function (m) {
             var cls = 'chat-bubble chat-bubble-' + m.author;
             return '<div class="' + cls + '">'
                 + '<div class="chat-bubble-content">' + escapeHtml(m.content).replace(/\n/g, '<br>') + '</div>'
@@ -2611,26 +2640,26 @@
         box.scrollTop = box.scrollHeight;
     }
 
-    function startChatPolling() {
-        stopChatPolling();
-        chatState.pollTimer = setInterval(function() {
-            if (!chatState.open) { stopChatPolling(); return; }
-            loadChatThread();
+    function startTeamsPoll() {
+        stopTeamsPoll();
+        teamsState.pollTimer = setInterval(function () {
+            if (!teamsState.activeSlug) { stopTeamsPoll(); return; }
+            loadTeamsThread();
         }, 3000);
     }
 
-    function stopChatPolling() {
-        if (chatState.pollTimer) {
-            clearInterval(chatState.pollTimer);
-            chatState.pollTimer = null;
+    function stopTeamsPoll() {
+        if (teamsState.pollTimer) {
+            clearInterval(teamsState.pollTimer);
+            teamsState.pollTimer = null;
         }
     }
 
-    function sendChatMessage(e) {
+    function sendTeamsMessage(e) {
         if (e) e.preventDefault();
-        if (!chatState.characterSlug || !state.activeApplicationId) return;
+        if (!teamsState.activeSlug || !state.activeApplicationId) return;
 
-        var input = document.getElementById('chat-drawer-input');
+        var input = $('teams-conv-input');
         var text = input.value.trim();
         if (!text) return;
 
@@ -2642,31 +2671,48 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 application_id: state.activeApplicationId,
-                character_slug: chatState.characterSlug,
+                character_slug: teamsState.activeSlug,
                 content: text,
             }),
         })
-            .then(function(result) {
+            .then(function () {
                 input.disabled = false;
                 input.focus();
-                loadChatThread();
+                loadTeamsThread();
             })
-            .catch(function(err) {
-                console.error('sendChatMessage:', err);
+            .catch(function (err) {
+                console.error('sendTeamsMessage:', err);
                 input.disabled = false;
                 input.value = text;
             });
     }
 
-    function wireChatDrawerControls() {
-        var closeBtn = document.getElementById('chat-drawer-close');
-        if (closeBtn) closeBtn.addEventListener('click', closeChatDrawer);
+    function wireTeamsControls() {
+        var backBtn = $('teams-conv-back');
+        if (backBtn) backBtn.addEventListener('click', function () {
+            teamsState.activeSlug = null;
+            stopTeamsPoll();
+            renderTeamsLanding();
+            renderTeamsSidebar();
+        });
 
-        var form = document.getElementById('chat-drawer-composer');
-        if (form) form.addEventListener('submit', sendChatMessage);
+        var emailBtn = $('teams-conv-email');
+        if (emailBtn) emailBtn.addEventListener('click', function () {
+            if (teamsState.activeSlug) {
+                switchView('inbox-work');
+            }
+        });
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && chatState.open) closeChatDrawer();
+        var form = $('teams-conv-composer');
+        if (form) form.addEventListener('submit', sendTeamsMessage);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && teamsState.activeSlug && state.currentView === 'teams') {
+                teamsState.activeSlug = null;
+                stopTeamsPoll();
+                renderTeamsLanding();
+                renderTeamsSidebar();
+            }
         });
     }
 
@@ -2694,6 +2740,8 @@
     wireCollapsible('mail-work-toggle', 'mail-work-body');
     wireCollapsible('teams-toggle', 'teams-body');
     wireCollapsible('teams-org-toggle', 'teams-org-list');
+
+    wireTeamsControls();
 
     // --- Initial load ---
     var savedEmail = localStorage.getItem('workready_email');

@@ -162,6 +162,9 @@
         var s = state.student;
         if (!s) return;
 
+        state.currentStage = (s.active_application && s.active_application.current_stage) || '';
+        state.activeApplicationId = (s.active_application && s.active_application.id) || null;
+
         // Header
         els.userName.textContent = s.name || s.email;
         els.stateBadgeLabel.textContent = stateLabel(s.state);
@@ -216,6 +219,8 @@
         if (state.currentView === 'dashboard') renderDashboard();
         if (state.currentView === 'inbox-personal') loadInbox('personal');
         if (state.currentView === 'inbox-work') loadInbox('work');
+
+        loadTeamDirectory();
     }
 
     function stateLabel(state) {
@@ -479,6 +484,13 @@
                 openMessage(msg);
             });
         });
+
+        // Inbox colour coding — add accent class to view container
+        var viewEl = document.getElementById('view-inbox-' + inbox);
+        if (viewEl) {
+            viewEl.classList.remove('inbox-view-personal', 'inbox-view-work');
+            viewEl.classList.add('inbox-view-' + inbox);
+        }
     }
 
     function openMessage(msg) {
@@ -2398,6 +2410,246 @@
         });
     }
 
+    // ============================================================
+    // Stage 7: Team directory
+    // ============================================================
+
+    var POST_HIRE_STAGES = ['placement', 'mid_placement', 'exit'];
+
+    var teamState = {
+        team: [],
+        org: [],
+        loaded: false,
+        orgExpanded: false,
+    };
+
+    function showTeamSection() {
+        var el = document.getElementById('nav-team-section');
+        if (el) el.classList.remove('hidden');
+    }
+
+    function hideTeamSection() {
+        var el = document.getElementById('nav-team-section');
+        if (el) el.classList.add('hidden');
+    }
+
+    function loadTeamDirectory() {
+        if (!state.activeApplicationId) {
+            hideTeamSection();
+            return;
+        }
+        if (POST_HIRE_STAGES.indexOf(state.currentStage) < 0) {
+            hideTeamSection();
+            return;
+        }
+
+        showTeamSection();
+
+        api('/api/v1/team/' + state.activeApplicationId)
+            .then(function(data) {
+                teamState.team = data.team || [];
+                teamState.org = data.org || [];
+                teamState.loaded = true;
+                renderTeamDirectory();
+            })
+            .catch(function(err) {
+                console.error('loadTeamDirectory:', err);
+                var list = document.getElementById('nav-team-list');
+                if (list) list.innerHTML = '<div class="nav-team-error">Failed to load</div>';
+            });
+    }
+
+    function renderTeamDirectory() {
+        var teamList = document.getElementById('nav-team-list');
+        var orgList = document.getElementById('nav-org-list');
+        if (!teamList || !orgList) return;
+
+        if (teamState.team.length === 0) {
+            teamList.innerHTML = '<div class="nav-team-empty">No team members listed.</div>';
+        } else {
+            teamList.innerHTML = teamState.team.map(renderTeamMemberRow).join('');
+        }
+
+        orgList.innerHTML = teamState.org.map(renderOrgMemberRow).join('');
+        orgList.classList.toggle('nav-org-list-collapsed', !teamState.orgExpanded);
+
+        teamList.querySelectorAll('.nav-team-chat-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var slug = btn.getAttribute('data-slug');
+                openChatDrawer(slug);
+            });
+        });
+    }
+
+    function renderTeamMemberRow(member) {
+        var dotClass = member.presence_ok ? 'presence-dot-on' : 'presence-dot-off';
+        var disabledAttr = member.presence_ok ? '' : 'disabled';
+        var tooltip = member.presence_ok
+            ? 'Chat with ' + member.name
+            : (member.availability_note || 'Not available right now');
+
+        return '<div class="nav-team-member">'
+            + '<span class="presence-dot ' + dotClass + '" title="' + escapeHtml(tooltip) + '"></span>'
+            + '<div class="nav-team-info">'
+            + '<div class="nav-team-name">' + escapeHtml(member.name) + '</div>'
+            + '<div class="nav-team-role">' + escapeHtml(member.role) + '</div>'
+            + '</div>'
+            + '<button class="nav-team-chat-btn" data-slug="' + escapeHtml(member.slug) + '" '
+            + disabledAttr + ' title="' + escapeHtml(tooltip) + '">&#128172;</button>'
+            + '</div>';
+    }
+
+    function renderOrgMemberRow(member) {
+        return '<div class="nav-org-member" title="' + escapeHtml(member.role) + '">'
+            + '<span class="nav-org-name">' + escapeHtml(member.name) + '</span>'
+            + '<span class="nav-org-role">' + escapeHtml(member.role) + '</span>'
+            + '</div>';
+    }
+
+    function wireTeamDirectoryControls() {
+        var orgTitle = document.querySelector('.nav-org-title');
+        if (orgTitle) {
+            orgTitle.addEventListener('click', function() {
+                teamState.orgExpanded = !teamState.orgExpanded;
+                renderTeamDirectory();
+            });
+        }
+    }
+
+    // ============================================================
+    // Stage 7: Chat drawer
+    // ============================================================
+
+    var chatState = {
+        open: false,
+        characterSlug: null,
+        characterName: '',
+        characterRole: '',
+        presenceOk: false,
+        messages: [],
+        pollTimer: null,
+    };
+
+    function openChatDrawer(characterSlug) {
+        var character = teamState.team.find(function(m) { return m.slug === characterSlug; });
+        if (!character) return;
+
+        chatState.characterSlug = characterSlug;
+        chatState.characterName = character.name;
+        chatState.characterRole = character.role;
+        chatState.presenceOk = character.presence_ok;
+        chatState.open = true;
+
+        var drawer = document.getElementById('chat-drawer');
+        drawer.classList.remove('hidden');
+
+        document.getElementById('chat-drawer-name').textContent = character.name;
+        document.getElementById('chat-drawer-role').textContent = character.role;
+        var dot = document.getElementById('chat-drawer-presence');
+        dot.className = 'chat-presence-dot ' +
+            (character.presence_ok ? 'presence-dot-on' : 'presence-dot-off');
+
+        loadChatThread();
+        startChatPolling();
+
+        var input = document.getElementById('chat-drawer-input');
+        if (input) input.focus();
+    }
+
+    function closeChatDrawer() {
+        chatState.open = false;
+        stopChatPolling();
+        var drawer = document.getElementById('chat-drawer');
+        if (drawer) drawer.classList.add('hidden');
+    }
+
+    function loadChatThread() {
+        if (!chatState.characterSlug || !state.activeApplicationId) return;
+
+        api('/api/v1/chat/thread/' +
+            state.activeApplicationId + '/' +
+            encodeURIComponent(chatState.characterSlug))
+            .then(function(data) {
+                chatState.messages = data.messages || [];
+                chatState.presenceOk = data.presence_ok;
+                renderChatThread();
+            })
+            .catch(function(err) { console.error('loadChatThread:', err); });
+    }
+
+    function renderChatThread() {
+        var box = document.getElementById('chat-drawer-messages');
+        if (!box) return;
+
+        box.innerHTML = chatState.messages.map(function(m) {
+            var cls = 'chat-bubble chat-bubble-' + m.author;
+            return '<div class="' + cls + '">'
+                + '<div class="chat-bubble-content">' + escapeHtml(m.content).replace(/\n/g, '<br>') + '</div>'
+                + '</div>';
+        }).join('');
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function startChatPolling() {
+        stopChatPolling();
+        chatState.pollTimer = setInterval(function() {
+            if (!chatState.open) { stopChatPolling(); return; }
+            loadChatThread();
+        }, 3000);
+    }
+
+    function stopChatPolling() {
+        if (chatState.pollTimer) {
+            clearInterval(chatState.pollTimer);
+            chatState.pollTimer = null;
+        }
+    }
+
+    function sendChatMessage(e) {
+        if (e) e.preventDefault();
+        if (!chatState.characterSlug || !state.activeApplicationId) return;
+
+        var input = document.getElementById('chat-drawer-input');
+        var text = input.value.trim();
+        if (!text) return;
+
+        input.value = '';
+        input.disabled = true;
+
+        api('/api/v1/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                application_id: state.activeApplicationId,
+                character_slug: chatState.characterSlug,
+                content: text,
+            }),
+        })
+            .then(function(result) {
+                input.disabled = false;
+                input.focus();
+                loadChatThread();
+            })
+            .catch(function(err) {
+                console.error('sendChatMessage:', err);
+                input.disabled = false;
+                input.value = text;
+            });
+    }
+
+    function wireChatDrawerControls() {
+        var closeBtn = document.getElementById('chat-drawer-close');
+        if (closeBtn) closeBtn.addEventListener('click', closeChatDrawer);
+
+        var form = document.getElementById('chat-drawer-composer');
+        if (form) form.addEventListener('submit', sendChatMessage);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && chatState.open) closeChatDrawer();
+        });
+    }
+
     // --- Wire static external links from CONFIG ---
     // These sidebar links don't depend on student state, so we set them
     // once at boot. Keeps config.js as the single source of truth for
@@ -2415,6 +2667,9 @@
     if (els.careerCompassLink && CONFIG.CAREER_COMPASS_URL) {
         els.careerCompassLink.href = CONFIG.CAREER_COMPASS_URL;
     }
+
+    wireTeamDirectoryControls();
+    wireChatDrawerControls();
 
     // --- Initial load ---
     var savedEmail = localStorage.getItem('workready_email');

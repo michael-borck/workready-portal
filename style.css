@@ -2081,3 +2081,269 @@ button.sidebar-link {
     .lunchroom-msg { max-width: 88%; }
     .lunchroom-room-status { display: none; }
 }
+
+/* ============================================================
+   Stage 7: Team directory sidebar
+   ============================================================ */
+
+.nav-team-section.hidden { display: none; }
+
+.nav-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  cursor: default;
+}
+
+.nav-org-title {
+  cursor: pointer;
+  user-select: none;
+}
+.nav-org-title:hover { color: #374151; }
+
+.nav-team-list {
+  padding: 0 0.5rem;
+}
+
+.nav-team-member {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+}
+.nav-team-member:hover {
+  background: #f3f4f6;
+}
+
+.presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.presence-dot-on { background: #22c55e; }
+.presence-dot-off { background: #9ca3af; }
+
+.nav-team-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nav-team-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-team-role {
+  font-size: 0.72rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-team-chat-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  font-size: 1rem;
+  opacity: 0.7;
+}
+.nav-team-chat-btn:hover:not([disabled]) { opacity: 1; }
+.nav-team-chat-btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.nav-org-list-collapsed {
+  display: none;
+}
+
+.nav-org-list {
+  padding: 0 1rem;
+}
+
+.nav-org-member {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+.nav-org-name { font-weight: 500; }
+.nav-org-role { font-size: 0.68rem; }
+
+.nav-team-empty, .nav-team-error {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ============================================================
+   Stage 7: Chat drawer
+   ============================================================ */
+
+.chat-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 360px;
+  max-width: 90vw;
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  transform: translateX(0);
+  transition: transform 0.2s ease;
+}
+.chat-drawer.hidden {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+.chat-drawer-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafbfc;
+}
+
+.chat-drawer-character {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.chat-presence-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.chat-drawer-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1f2937;
+}
+.chat-drawer-role {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.chat-drawer-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0 0.5rem;
+}
+.chat-drawer-close:hover { color: #1f2937; }
+
+.chat-drawer-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #f9fafb;
+}
+
+.chat-bubble {
+  max-width: 78%;
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.chat-bubble-student {
+  background: #2563eb;
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bubble-character {
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-drawer-composer {
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 0.6rem;
+  background: #fff;
+}
+
+.chat-drawer-input {
+  flex: 1 1 auto;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: none;
+}
+.chat-drawer-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.chat-drawer-send {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .chat-drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+}
+
+/* ============================================================
+   Stage 7: Personal vs work inbox colour coding
+   ============================================================ */
+
+.inbox-view-personal {
+  --inbox-accent: #7c3aed;
+  --inbox-accent-bg: #f5f3ff;
+}
+.inbox-view-work {
+  --inbox-accent: #059669;
+  --inbox-accent-bg: #ecfdf5;
+}
+
+.inbox-view-personal .inbox-header,
+.inbox-view-work .inbox-header {
+  border-left: 4px solid var(--inbox-accent);
+  padding-left: 0.75rem;
+  background: var(--inbox-accent-bg);
+}

@@ -176,24 +176,31 @@
 
         // Show/hide work-only nav items
         var hired = s.state === 'HIRED' || s.state === 'COMPLETED';
-        var inInterviewStage = hired && s.active_application
-            && s.active_application.current_stage === 'interview';
-        var workEmailSection = $('nav-work-email-section');
-        if (workEmailSection) toggle(workEmailSection, hired);
-        toggle(els.navInterview, inInterviewStage);
+
+        // Mail section: pre-hire shows flat, post-hire shows split
+        var mailSimple = $('mail-nav-simple');
+        var mailSplit = $('mail-nav-split');
+        if (mailSimple && mailSplit) {
+            if (hired) {
+                mailSimple.classList.add('hidden');
+                mailSplit.classList.remove('hidden');
+                // Sync unread badge to split view
+                var splitBadge = $('unread-personal-split');
+                if (splitBadge) {
+                    splitBadge.textContent = els.unreadPersonal ? els.unreadPersonal.textContent : '0';
+                    toggle(splitBadge, s.unread_personal > 0);
+                }
+            } else {
+                mailSimple.classList.remove('hidden');
+                mailSplit.classList.add('hidden');
+            }
+        }
+
+        // Teams section: visible post-hire
+        var teamsSection = $('nav-teams-section');
+        if (teamsSection) toggle(teamsSection, hired);
+
         toggle(els.navTasks, hired);
-        toggle(els.navTeam, hired);
-        toggle($('nav-lunchroom'), hired);
-        var inExitStage = hired && s.active_application
-            && s.active_application.current_stage === 'exit';
-        toggle($('nav-exit-interview'), inExitStage || s.state === 'COMPLETED');
-        // Perf review nav: visible during placement stage. The route
-        // returns a friendly 400 if task 2 isn't yet submitted, so the
-        // student can see the nav item but won't be able to start until
-        // the trigger has fired.
-        var inWorkTaskStage = hired && s.active_application
-            && s.active_application.current_stage === 'placement';
-        toggle($('nav-perf-review'), inWorkTaskStage);
         toggle(els.intranetLink, hired);
 
         // Apply company theme if hired
@@ -246,6 +253,19 @@
         if (!el) return;
         if (show) el.classList.remove('hidden');
         else el.classList.add('hidden');
+    }
+
+    function wireCollapsible(toggleId, bodyId) {
+        var toggle = $(toggleId);
+        var body = $(bodyId);
+        if (!toggle || !body) return;
+        toggle.addEventListener('click', function () {
+            body.classList.toggle('collapsed');
+            var arrow = toggle.querySelector('.collapse-arrow');
+            if (arrow) {
+                arrow.innerHTML = body.classList.contains('collapsed') ? '&#9656;' : '&#9662;';
+            }
+        });
     }
 
     // --- Dashboard ---
@@ -2668,8 +2688,12 @@
         els.careerCompassLink.href = CONFIG.CAREER_COMPASS_URL;
     }
 
-    wireTeamDirectoryControls();
-    wireChatDrawerControls();
+    // Sidebar collapsible sections
+    wireCollapsible('mail-toggle', 'mail-body');
+    wireCollapsible('mail-personal-toggle', 'mail-personal-body');
+    wireCollapsible('mail-work-toggle', 'mail-work-body');
+    wireCollapsible('teams-toggle', 'teams-body');
+    wireCollapsible('teams-org-toggle', 'teams-org-list');
 
     // --- Initial load ---
     var savedEmail = localStorage.getItem('workready_email');

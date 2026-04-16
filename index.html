@@ -152,6 +152,16 @@
                     </nav>
                 </div>
 
+            <!-- Stage 7: Team directory -->
+            <div class="sidebar-section hidden" id="nav-team-section">
+              <h4>&#128101; Your Team</h4>
+              <div class="nav-team-list" id="nav-team-list"></div>
+              <div class="nav-section-title nav-org-title">
+                <span>Wider Organisation</span>
+              </div>
+              <div class="nav-org-list nav-org-list-collapsed" id="nav-org-list"></div>
+            </div>
+
                 <div class="sidebar-section">
                     <h4>Workspace</h4>
                     <nav class="nav">
@@ -458,6 +468,25 @@
             </form>
         </div>
     </div>
+
+  <!-- Stage 7: Chat drawer -->
+  <aside class="chat-drawer hidden" id="chat-drawer">
+    <header class="chat-drawer-header">
+      <div class="chat-drawer-character">
+        <span class="chat-presence-dot" id="chat-drawer-presence"></span>
+        <div>
+          <div class="chat-drawer-name" id="chat-drawer-name"></div>
+          <div class="chat-drawer-role" id="chat-drawer-role"></div>
+        </div>
+      </div>
+      <button class="chat-drawer-close" id="chat-drawer-close" aria-label="Close">&times;</button>
+    </header>
+    <div class="chat-drawer-messages" id="chat-drawer-messages"></div>
+    <form class="chat-drawer-composer" id="chat-drawer-composer">
+      <textarea class="chat-drawer-input" id="chat-drawer-input" placeholder="Type a message..." rows="2" required></textarea>
+      <button type="submit" class="btn btn-primary chat-drawer-send">Send</button>
+    </form>
+  </aside>
 
     <script src="config.js"></script>
     <script src="app.js"></script>

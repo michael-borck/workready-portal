@@ -111,7 +111,15 @@
     function api(path, opts) {
         opts = opts || {};
         return fetch(CONFIG.API_BASE + path, opts).then(function (r) {
-            if (!r.ok) throw new Error('API error: ' + r.status);
+            if (!r.ok) {
+                // Surface the API's own message (e.g. "Unknown or inactive
+                // access code") instead of a generic connection error.
+                return r.json().catch(function () { return null; }).then(function (body) {
+                    var detail = (body && body.detail) ? body.detail
+                        : ('Request failed (' + r.status + ')');
+                    throw new Error(detail);
+                });
+            }
             return r.json();
         });
     }
@@ -160,9 +168,21 @@
             })
             .catch(function (err) {
                 console.error('Failed to load state:', err);
-                els.dashboardContent.innerHTML =
-                    '<p class="placeholder">Could not connect to WorkReady API. ' +
-                    'Make sure the backend is running at ' + CONFIG.API_BASE + '</p>';
+                var msg = err.message || 'Unknown error';
+                var html;
+                if (err instanceof TypeError) {
+                    // fetch itself failed — genuinely unreachable
+                    html = 'Could not connect to WorkReady API at ' +
+                        escapeHtml(CONFIG.API_BASE) + '. Check your connection and try again.';
+                } else if (msg.indexOf('access code') !== -1) {
+                    html = '<strong>' + escapeHtml(msg) + '</strong><br><br>' +
+                        '<button class="btn" id="back-to-signin">Sign out and re-enter code</button>';
+                } else {
+                    html = escapeHtml(msg);
+                }
+                els.dashboardContent.innerHTML = '<p class="placeholder">' + html + '</p>';
+                var back = $('back-to-signin');
+                if (back) back.addEventListener('click', signOut);
             });
     }
 

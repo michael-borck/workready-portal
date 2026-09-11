@@ -466,6 +466,31 @@
     </div>
 
     <!-- Compose modal -->
+    <!-- Persona onboarding modal -->
+    <div id="persona-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="persona-close">&times;</button>
+            <h2>Your candidate profile</h2>
+            <p class="persona-help">
+                Pick any name you like — this is your persona in the simulation.
+                Recruiters never see your real one, and nothing here identifies you.
+                Your in-sim mailbox is derived from it.
+            </p>
+            <form id="persona-form">
+                <div class="form-group">
+                    <label for="persona-name">Candidate name</label>
+                    <input type="text" id="persona-name" maxlength="60" required
+                           placeholder="e.g. Jane Doe" autocomplete="off">
+                </div>
+                <p class="persona-handle" id="persona-hint"></p>
+                <div class="persona-actions">
+                    <button type="submit" class="btn btn-primary">Save profile</button>
+                    <button type="button" class="btn" id="persona-later">Maybe later</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="compose-modal" class="modal hidden">
         <div class="modal-content modal-content-wide">
             <button class="modal-close" id="compose-close">&times;</button>

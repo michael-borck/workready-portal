@@ -27,6 +27,7 @@
         currentView: 'dashboard',
         interview: null,  // active interview session, when in the chat
         timezone: detectTimezone(),
+        personaPrompted: false,
     };
 
     function formatInTimezone(isoString, options) {
@@ -78,6 +79,13 @@
         inboxWorkList: $('inbox-work-list'),
         modal: $('message-modal'),
         modalClose: $('modal-close'),
+        // Persona onboarding elements
+        personaModal: $('persona-modal'),
+        personaForm: $('persona-form'),
+        personaName: $('persona-name'),
+        personaClose: $('persona-close'),
+        personaLater: $('persona-later'),
+        personaHint: $('persona-hint'),
         primerIframe: $('primer-iframe'),
         stateBadgeLabel: $('state-badge-label'),
         // Interview view elements
@@ -202,7 +210,6 @@
 
         toggle(els.navTasks, hired);
         toggle(els.intranetLink, hired);
-
         // Apply company theme if hired
         if (hired && s.active_application) {
             applyCompanyTheme(s.active_application.company_slug);
@@ -226,6 +233,9 @@
         if (state.currentView === 'dashboard') renderDashboard();
         if (state.currentView === 'inbox-personal') loadInbox('personal');
         if (state.currentView === 'inbox-work') loadInbox('work');
+
+        // First sign-in without a persona: offer the candidate profile
+        maybePromptPersona();
 
         loadTeamsData();
     }
@@ -2717,6 +2727,68 @@
         });
     }
 
+    // --- Persona onboarding (candidate profile) ---
+    function personaHandlePreview(name) {
+        var parts = name.toLowerCase().match(/[a-z]+/g) || [];
+        var local = parts.filter(function (p) { return p; }).join('.');
+        if (!local) return '';
+        return local + '@student.workready.eduserver.au';
+    }
+
+    function openPersonaModal() {
+        var s = state.student;
+        els.personaName.value = (s && s.display_name) || '';
+        updatePersonaHint();
+        els.personaModal.classList.remove('hidden');
+        els.personaName.focus();
+    }
+
+    function closePersonaModal() {
+        els.personaModal.classList.add('hidden');
+    }
+
+    function updatePersonaHint() {
+        var v = els.personaName.value.trim();
+        var preview = personaHandlePreview(v);
+        els.personaHint.textContent = preview
+            ? 'Your in-sim mailbox: ' + preview + ' (a number is added if it\'s taken)'
+            : '';
+    }
+
+    function maybePromptPersona() {
+        var s = state.student;
+        if (s && !s.display_name && !state.personaPrompted) {
+            state.personaPrompted = true;
+            openPersonaModal();
+        }
+    }
+
+    function wirePersonaControls() {
+        els.personaClose.addEventListener('click', closePersonaModal);
+        els.personaLater.addEventListener('click', closePersonaModal);
+        els.personaName.addEventListener('input', updatePersonaHint);
+        els.userName.addEventListener('click', openPersonaModal);
+        els.userName.title = 'Click to edit your candidate profile';
+        els.personaForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var name = els.personaName.value.trim();
+            if (!name) return;
+            fetch(CONFIG.API_BASE + '/api/v1/student/' + encodeURIComponent(state.code) + '/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ display_name: name }),
+            })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Could not save profile (' + r.status + ')');
+                    closePersonaModal();
+                    loadStudentState();
+                })
+                .catch(function (err) {
+                    els.personaHint.textContent = err.message;
+                });
+        });
+    }
+
     // --- Tasks (Stage 4) ---
     var TASK_STATUS_LABELS = {
         assigned: 'To do',
@@ -2880,6 +2952,7 @@
     wireCollapsible('teams-org-toggle', 'teams-org-list');
 
     wireTeamsControls();
+    wirePersonaControls();
 
     // --- Initial load ---
     var savedCode = localStorage.getItem('workready_code');

@@ -2593,3 +2593,29 @@ button.sidebar-link {
 
 .task-note-ok  { color: #15803d; }
 .task-note-err { color: #b91c1c; }
+
+/* ============================================================
+   Persona onboarding modal
+   ============================================================ */
+.persona-help {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--sim-secondary, #334155);
+  opacity: 0.85;
+  margin-bottom: 14px;
+}
+
+.persona-handle {
+  font-size: 0.8rem;
+  color: var(--sim-primary, #1f4d99);
+  background: var(--sim-primary-tint, #f1f5fb);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  min-height: 1.2em;
+}
+
+.persona-actions {
+  display: flex;
+  gap: 10px;
+}

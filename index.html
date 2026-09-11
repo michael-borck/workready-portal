@@ -93,7 +93,7 @@
                             </ul>
                         </span>
                     </span>
-                    <span id="user-name" class="user-name"></span>
+                    <span id="user-name" class="user-name"></span><span id="user-name-edit" title="Edit your candidate profile" aria-hidden="true">✎</span>
                     <button id="signout-btn" class="btn btn-link">Sign out</button>
                 </div>
             </div>
@@ -285,11 +285,6 @@
                 </div>
 
                 <!-- Team view -->
-                <div id="view-team" class="view hidden">
-                    <h2>Your Team</h2>
-                    <div class="placeholder">Team view coming soon. You'll see your colleagues here — both other students in your intake and AI characters.</div>
-                </div>
-
                 <div id="view-teams" class="view hidden">
                     <div id="teams-landing" class="teams-landing">
                         <!-- populated by renderTeamsLanding() -->
@@ -511,5 +506,6 @@
 
     <script src="config.js"></script>
     <script src="app.js"></script>
+    <div id="live-toast" class="live-toast hidden" role="status"></div>
 </body>
 </html>

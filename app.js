@@ -28,6 +28,7 @@
         interview: null,  // active interview session, when in the chat
         timezone: detectTimezone(),
         personaPrompted: false,
+        lastUnread: null,
     };
 
     function formatInTimezone(isoString, options) {
@@ -66,7 +67,6 @@
         navInboxWork: $('nav-inbox-work'),
         navInterview: $('nav-interview'),
         navTasks: $('nav-tasks'),
-        navTeam: $('nav-team'),
         unreadPersonal: $('unread-personal'),
         unreadWork: $('unread-work'),
         intranetLink: $('intranet-link'),
@@ -160,9 +160,33 @@
     }
 
     // --- State loading ---
+    function showLiveToast(text, view) {
+        var toast = $('live-toast');
+        if (!toast) return;
+        toast.textContent = text;
+        toast.classList.remove('hidden');
+        toast.onclick = function () {
+            toast.classList.add('hidden');
+            if (view) switchView(view);
+        };
+        clearTimeout(showLiveToast.timer);
+        showLiveToast.timer = setTimeout(function () {
+            toast.classList.add('hidden');
+        }, 6000);
+    }
+
     function loadStudentState() {
         api('/api/v1/student/' + encodeURIComponent(state.code) + '/state')
             .then(function (data) {
+                var prev = state.lastUnread;
+                if (prev && data) {
+                    if (data.unread_personal > (prev.personal || 0)) {
+                        showLiveToast('\u2709 New message in your personal inbox', 'inbox-personal');
+                    } else if (data.unread_work > (prev.work || 0)) {
+                        showLiveToast('\u2709 New message in your work inbox', 'inbox-work');
+                    }
+                }
+                state.lastUnread = { personal: data.unread_personal, work: data.unread_work };
                 state.student = data;
                 renderState();
             })
@@ -345,12 +369,20 @@
                     'Review Company Intranet</a>' +
                     '</div>';
             } else {
+                var nextAction = '';
+                if (stage === 'exit') {
+                    nextAction = '<button id="dashboard-exit-btn" class="btn btn-primary btn-cta">' +
+                        '&#128172; Start Your Exit Interview</button>';
+                } else {
+                    nextAction = '<button id="dashboard-tasks-btn" class="btn btn-primary btn-cta">' +
+                        '&#128221; Go to Your Tasks</button>';
+                }
                 html =
                     '<p>You are now an intern at ' + companyName(company) + ', working as a ' +
                     '<strong>' + escapeHtml(s.active_application.job_title) + '</strong>.</p>' +
                     '<p>Your current stage: <strong>' + stageLabel(stage) + '</strong></p>' +
-                    '<div class="action-buttons">' +
-                    '<a href="' + CONFIG.COMPANY_URLS[company] + '" target="_blank" class="btn btn-primary">' +
+                    '<div class="action-buttons">' + nextAction +
+                    '<a href="' + CONFIG.COMPANY_URLS[company] + '" target="_blank" class="btn btn-secondary">' +
                     'Visit Company Intranet</a>' +
                     '</div>';
             }
@@ -389,6 +421,20 @@
             });
         }
 
+        // Wire next-action buttons
+        var dashTasksBtn = $('dashboard-tasks-btn');
+        if (dashTasksBtn) {
+            dashTasksBtn.addEventListener('click', function () {
+                switchView('tasks');
+            });
+        }
+        var dashExitBtn = $('dashboard-exit-btn');
+        if (dashExitBtn) {
+            dashExitBtn.addEventListener('click', function () {
+                switchView('exit-interview');
+            });
+        }
+
         // Wire resign link
         var resignBtn = $('dashboard-resign-btn');
         if (resignBtn) {
@@ -410,7 +456,7 @@
             'This action cannot be undone.';
         if (!confirm(msg)) return;
 
-        fetch(CONFIG.API_BASE + '/api/v1/application/' + app.id + '/resign', {
+        fetch(CONFIG.API_BASE + '/api/v1/application/' + app.id + '/resign?code=' + encodeURIComponent(state.code), {
             method: 'POST',
         })
             .then(function (r) {
@@ -642,7 +688,7 @@
         }
 
         // Check if booking is enabled by fetching booking state
-        api('/api/v1/interview/' + app.id + '/booking')
+        api('/api/v1/interview/' + app.id + '/booking?code=' + encodeURIComponent(state.code))
             .then(function (booking) {
                 if (!booking.booking_enabled) {
                     // Booking disabled — go straight to the pre-interview screen
@@ -777,7 +823,7 @@
             return;
         }
 
-        api('/api/v1/interview/' + app.id + '/slots?days=' + days + '&time_of_day=' + tod)
+        api('/api/v1/interview/' + app.id + '/slots?days=' + days + '&time_of_day=' + tod + '&code=' + encodeURIComponent(state.code))
             .then(function (data) {
                 if (!data.slots || data.slots.length === 0) {
                     container.innerHTML =
@@ -833,7 +879,7 @@
         document.querySelectorAll('.booking-slot-btn').forEach(function (b) {
             b.disabled = true;
         });
-        fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/book', {
+        fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/book?code=' + encodeURIComponent(state.code), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ scheduled_at: scheduledAt }),
@@ -869,7 +915,7 @@
         var practiceUrl = CONFIG.API_BASE + '/api/v1/jobs/' +
             encodeURIComponent(app.company_slug) + '/' +
             encodeURIComponent(app.job_slug) + '/practice-script';
-        var icsUrl = CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/booking.ics';
+        var icsUrl = CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/booking.ics?code=' + encodeURIComponent(state.code);
 
         // Reschedule info
         var rescheduleSection = '';
@@ -915,7 +961,7 @@
         if (cancelBtn) {
             cancelBtn.addEventListener('click', function () {
                 if (!confirm('Cancel your appointment and pick a new time? This will use one of your reschedules.')) return;
-                fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/cancel-booking', {
+                fetch(CONFIG.API_BASE + '/api/v1/interview/' + app.id + '/cancel-booking?code=' + encodeURIComponent(state.code), {
                     method: 'POST',
                 })
                     .then(function (r) {
@@ -950,7 +996,7 @@
             encodeURIComponent(app.company_slug) + '/' +
             encodeURIComponent(app.job_slug) + '/practice-script';
         var talkBuddyUrl = CONFIG.API_BASE + '/api/v1/practice/interview/' +
-            app.id + '/talk-buddy.json';
+            app.id + '/talk-buddy.json?code=' + encodeURIComponent(state.code);
         els.interviewPre.innerHTML =
             '<h2>Ready to interview?</h2>' +
             '<p>You\'re about to interview for the <strong>' +
@@ -986,7 +1032,7 @@
         fetch(CONFIG.API_BASE + '/api/v1/interview/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ application_id: app.id }),
+            body: JSON.stringify({ application_id: app.id, code: state.code }),
         })
             .then(function (r) {
                 if (!r.ok) throw new Error('Could not start interview');
@@ -1086,6 +1132,7 @@
             body: JSON.stringify({
                 session_id: state.interview.session_id,
                 message: msg,
+                code: state.code,
             }),
         })
             .then(function (r) {
@@ -1121,7 +1168,7 @@
         els.interviewEndBtn.textContent = 'Closing interview...';
         appendThinking();
 
-        fetch(CONFIG.API_BASE + '/api/v1/interview/' + state.interview.session_id + '/end', {
+        fetch(CONFIG.API_BASE + '/api/v1/interview/' + state.interview.session_id + '/end?code=' + encodeURIComponent(state.code), {
             method: 'POST',
         })
             .then(function (r) {
@@ -1251,7 +1298,7 @@
             return;
         }
         var appId = s.active_application.id;
-        api('/api/v1/lunchroom/application/' + appId)
+        api('/api/v1/lunchroom/application/' + appId + '?code=' + encodeURIComponent(state.code))
             .then(function (data) {
                 lunchroomState.sessions = data.sessions || [];
                 renderLunchroom();
@@ -1342,7 +1389,7 @@
 
     function lunchroomTalkBuddyUrl(sessionId) {
         return CONFIG.API_BASE + '/api/v1/practice/lunchroom/' +
-            sessionId + '/talk-buddy.json';
+            sessionId + '/talk-buddy.json?code=' + encodeURIComponent(state.code);
     }
 
     function renderInvitationCard(sess) {
@@ -1480,7 +1527,7 @@
         fetch(CONFIG.API_BASE + '/api/v1/lunchroom/invitation/' + sessionId + '/pick-slot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scheduled_at: slotIso }),
+            body: JSON.stringify({ scheduled_at: slotIso, code: state.code }),
         })
             .then(function (r) { return r.json(); })
             .then(function () { loadLunchroom(); })
@@ -1488,7 +1535,7 @@
     }
 
     function declineLunchroomInvitation(sessionId) {
-        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/invitation/' + sessionId + '/decline', {
+        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/invitation/' + sessionId + '/decline?code=' + encodeURIComponent(state.code), {
             method: 'POST',
         })
             .then(function (r) { return r.json(); })
@@ -1500,7 +1547,7 @@
         lunchroomState.activeSessionId = sessionId;
         lunchroomState.lastPostCount = 0;
 
-        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/activate', {
+        fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/activate?code=' + encodeURIComponent(state.code), {
             method: 'POST',
         })
             .then(function (r) {
@@ -1629,7 +1676,7 @@
                 stopLunchroomPoll();
                 return;
             }
-            fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/chat')
+            fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/chat?code=' + encodeURIComponent(state.code))
                 .then(function (r) { return r.ok ? r.json() : null; })
                 .then(function (chatState) {
                     if (chatState) applyChatState(chatState);
@@ -1659,7 +1706,7 @@
         fetch(CONFIG.API_BASE + '/api/v1/lunchroom/session/' + sessionId + '/post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: text }),
+            body: JSON.stringify({ content: text, code: state.code }),
         })
             .then(function (r) {
                 if (!r.ok) throw new Error('post failed');
@@ -1709,7 +1756,7 @@
         var app = s.active_application;
 
         // Look up any existing exit interview for this application
-        api('/api/v1/exit/application/' + app.id)
+        api('/api/v1/exit/application/' + app.id + '?code=' + encodeURIComponent(state.code))
             .then(function (session) {
                 exitState.session = session;
                 if (session.status === 'completed') {
@@ -1761,7 +1808,7 @@
         fetch(CONFIG.API_BASE + '/api/v1/exit/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ application_id: app.id }),
+            body: JSON.stringify({ application_id: app.id, code: state.code }),
         })
             .then(function (r) {
                 if (!r.ok) {
@@ -1875,6 +1922,7 @@
             body: JSON.stringify({
                 session_id: exitState.session.session_id,
                 message: msg,
+                code: state.code,
             }),
         })
             .then(function (r) {
@@ -1914,7 +1962,7 @@
         endBtn.textContent = 'Closing...';
         appendExitThinking();
 
-        fetch(CONFIG.API_BASE + '/api/v1/exit/' + exitState.session.session_id + '/end', {
+        fetch(CONFIG.API_BASE + '/api/v1/exit/' + exitState.session.session_id + '/end?code=' + encodeURIComponent(state.code), {
             method: 'POST',
         })
             .then(function (r) {
@@ -1990,7 +2038,7 @@
         }
         var app = s.active_application;
 
-        api('/api/v1/perf-review/application/' + app.id)
+        api('/api/v1/perf-review/application/' + app.id + '?code=' + encodeURIComponent(state.code))
             .then(function (session) {
                 perfState.session = session;
                 if (session.status === 'completed') {
@@ -2037,7 +2085,7 @@
         fetch(CONFIG.API_BASE + '/api/v1/perf-review/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ application_id: app.id }),
+            body: JSON.stringify({ application_id: app.id, code: state.code }),
         })
             .then(function (r) {
                 if (!r.ok) {
@@ -2150,6 +2198,7 @@
             body: JSON.stringify({
                 session_id: perfState.session.session_id,
                 message: msg,
+                code: state.code,
             }),
         })
             .then(function (r) { if (!r.ok) throw new Error('Reply failed'); return r.json(); })
@@ -2183,7 +2232,7 @@
         endBtn.textContent = 'Closing...';
         appendPerfThinking();
 
-        fetch(CONFIG.API_BASE + '/api/v1/perf-review/' + perfState.session.session_id + '/end', {
+        fetch(CONFIG.API_BASE + '/api/v1/perf-review/' + perfState.session.session_id + '/end?code=' + encodeURIComponent(state.code), {
             method: 'POST',
         })
             .then(function (r) { if (!r.ok) throw new Error('Could not end'); return r.json(); })
@@ -2490,7 +2539,7 @@
         if (!state.activeApplicationId) return;
         if (POST_HIRE_STAGES.indexOf(state.currentStage) < 0) return;
 
-        api('/api/v1/team/' + state.activeApplicationId)
+        api('/api/v1/team/' + state.activeApplicationId + '?code=' + encodeURIComponent(state.code))
             .then(function (data) {
                 teamsState.team = data.team || [];
                 teamsState.org = data.org || [];
@@ -2645,7 +2694,7 @@
     function loadTeamsThread() {
         if (!teamsState.activeSlug || !state.activeApplicationId) return;
 
-        api('/api/v1/chat/thread/' + state.activeApplicationId + '/' + encodeURIComponent(teamsState.activeSlug))
+        api('/api/v1/chat/thread/' + state.activeApplicationId + '/' + encodeURIComponent(teamsState.activeSlug) + '?code=' + encodeURIComponent(state.code))
             .then(function (data) {
                 teamsState.messages = data.messages || [];
                 renderTeamsChat();
@@ -2704,6 +2753,7 @@
                 application_id: state.activeApplicationId,
                 character_slug: teamsState.activeSlug,
                 content: text,
+                code: state.code,
             }),
         })
             .then(function () {
@@ -2788,6 +2838,8 @@
         els.personaLater.addEventListener('click', closePersonaModal);
         els.personaName.addEventListener('input', updatePersonaHint);
         els.userName.addEventListener('click', openPersonaModal);
+        var nameEdit = $('user-name-edit');
+        if (nameEdit) nameEdit.addEventListener('click', openPersonaModal);
         els.userName.title = 'Click to edit your candidate profile';
         els.personaForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -2832,7 +2884,7 @@
             return;
         }
         var appId = s.active_application.id;
-        api('/api/v1/tasks/application/' + appId)
+        api('/api/v1/tasks/application/' + appId + '?code=' + encodeURIComponent(state.code))
             .then(function (data) {
                 renderTasks(data.tasks || []);
             })
@@ -2876,6 +2928,8 @@
                 html += '<form class="task-submit-form" data-task="' + t.id + '">' +
                     '<textarea class="task-input" rows="6" required ' +
                     'placeholder="Write or paste your submission here..."></textarea>' +
+                    '<input type="file" class="task-file" accept="application/pdf,.pdf" ' +
+                    'aria-label="Attach a PDF (optional)">' +
                     '<button type="submit" class="btn btn-primary btn-sm">Submit task</button>' +
                     '</form>';
             } else if (t.status === 'under_review' || t.status === 'submitted') {
@@ -2899,7 +2953,7 @@
                 if (!det.open || det.getAttribute('data-loaded')) return;
                 det.setAttribute('data-loaded', '1');
                 var target = det.querySelector('.task-description');
-                api('/api/v1/tasks/' + det.getAttribute('data-task-detail'))
+                api('/api/v1/tasks/' + det.getAttribute('data-task-detail') + '?code=' + encodeURIComponent(state.code))
                     .then(function (d) {
                         target.textContent = d.description || d.brief || 'No further detail.';
                     })
@@ -2919,7 +2973,12 @@
                 btn.disabled = true;
                 btn.textContent = 'Submitting...';
                 var fd = new FormData();
+                fd.append('code', state.code);
                 fd.append('body', ta.value);
+                var fileInput = form.querySelector('.task-file');
+                if (fileInput && fileInput.files[0]) {
+                    fd.append('attachment', fileInput.files[0]);
+                }
                 fetch(CONFIG.API_BASE + '/api/v1/tasks/' + tid + '/submit', { method: 'POST', body: fd })
                     .then(function (r) {
                         if (!r.ok) throw new Error('Submission failed (' + r.status + ')');
@@ -2980,8 +3039,19 @@
         signIn(savedCode);
     }
 
-    // Refresh state every 30 seconds (catches new messages, stage transitions)
-    setInterval(function () {
-        if (state.code) loadStudentState();
-    }, 30000);
+    // Adaptive polling: chat views feel live (8s), everything else idles (30s).
+    var pollTimer = null;
+    function schedulePoll() {
+        if (pollTimer) clearTimeout(pollTimer);
+        var chatViews = {
+            'interview': 1, 'perf-review': 1, 'exit-interview': 1,
+            'teams': 1, 'lunchroom': 1, 'inbox-personal': 1, 'inbox-work': 1,
+        };
+        var delay = chatViews[state.currentView] ? 8000 : 30000;
+        pollTimer = setTimeout(function () {
+            if (state.code) loadStudentState();
+            schedulePoll();
+        }, delay);
+    }
+    schedulePoll();
 })();

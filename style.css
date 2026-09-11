@@ -2619,3 +2619,42 @@ button.sidebar-link {
   display: flex;
   gap: 10px;
 }
+
+/* ============================================================
+   Live toast (new-message nudges) + mobile polish
+   ============================================================ */
+.live-toast {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 999;
+  background: var(--sim-white, #fff);
+  color: var(--sim-secondary, #334155);
+  border: 1px solid var(--sim-primary-soft, #e6edf7);
+  border-left: 3px solid var(--sim-primary, #1f4d99);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  max-width: 320px;
+}
+
+@media (max-width: 560px) {
+  .task-card { padding: 12px 14px; }
+  .action-buttons { flex-direction: column; }
+  .action-buttons .btn,
+  .action-buttons a.btn { width: 100%; text-align: center; }
+  .task-submit-form .task-file { width: 100%; font-size: 0.8rem; }
+  .live-toast { left: 12px; right: 12px; max-width: none; bottom: 12px; }
+  #user-name-edit { display: none; }
+}
+
+#user-name-edit {
+  margin-left: 6px;
+  font-size: 0.72em;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+#user-name-edit:hover { opacity: 1; }

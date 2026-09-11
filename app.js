@@ -134,8 +134,14 @@
     }
 
     function signOut() {
+        stopLunchroomPoll();
+        stopTeamsPoll();
         state.code = null;
         state.student = null;
+        state.lastUnread = null;
+        state.personaPrompted = false;
+        state.currentView = 'dashboard';
+        state.interview = null;
         localStorage.removeItem('workready_code');
         els.app.classList.add('hidden');
         els.signin.classList.remove('hidden');

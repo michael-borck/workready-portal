@@ -2621,6 +2621,65 @@ button.sidebar-link {
 }
 
 /* ============================================================
+   System error overlay (blurred backdrop, part of the system)
+   ============================================================ */
+.app-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.app-overlay.hidden { display: none; }
+
+.app-modal {
+  background: var(--sim-white, #fff);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  padding: 1.6rem 1.8rem;
+  width: min(92vw, 26rem);
+  text-align: center;
+  animation: app-modal-in 160ms ease-out;
+}
+
+@keyframes app-modal-in {
+  from { transform: translateY(8px) scale(0.97); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.app-modal h3 {
+  margin: 0.6rem 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--sim-secondary, #334155);
+}
+
+.app-modal p {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--sim-secondary, #334155);
+  margin: 0 0 1.1rem;
+}
+
+.app-modal-icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 0.4rem;
+  border-radius: 50%;
+  background: var(--sim-coral-soft, #fff0ea);
+  color: var(--sim-coral-dark, #d44d1e);
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
    Live toast (new-message nudges) + mobile polish
    ============================================================ */
 .live-toast {

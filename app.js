@@ -141,13 +141,17 @@
             })
             .catch(function (err) {
                 console.error('Sign-in failed:', err);
-                if (err instanceof TypeError) {
-                    alert('Could not connect to WorkReady API at ' + CONFIG.API_BASE +
-                          '. Check your connection and try again.');
-                } else {
-                    alert(err.message || 'Sign-in failed — please check your access code.');
-                }
                 localStorage.removeItem('workready_code');
+                if (err instanceof TypeError) {
+                    showErrorModal('Connection problem',
+                        'Could not reach WorkReady at ' + CONFIG.API_BASE +
+                        '. Check your connection and try again.',
+                        null);
+                } else {
+                    showErrorModal('That code didn\u2019t work',
+                        err.message || 'Please check your access code and try again.',
+                        null);
+                }
             });
     }
 
@@ -184,6 +188,22 @@
     }
 
     // --- State loading ---
+    function showErrorModal(title, message, onOk) {
+        var overlay = $('app-error-overlay');
+        if (!overlay) { alert(message); if (onOk) onOk(); return; }
+        $('app-error-title').textContent = title;
+        $('app-error-message').textContent = message;
+        overlay.classList.remove('hidden');
+        var ok = $('app-error-ok');
+        var handler = function () {
+            overlay.classList.add('hidden');
+            ok.removeEventListener('click', handler);
+            if (onOk) onOk();
+        };
+        ok.removeEventListener('click', handler);
+        ok.addEventListener('click', handler);
+    }
+
     function showLiveToast(text, view) {
         var toast = $('live-toast');
         if (!toast) return;
@@ -223,10 +243,11 @@
                         escapeHtml(CONFIG.API_BASE) + '. Check your connection and try again.</p>';
                     return;
                 }
-                // The API rejected the code (unknown/revoked) — popup and
-                // return to the sign-in screen rather than a dead dashboard.
-                alert(err.message || 'Sign-in failed — please check your access code.');
-                signOut();
+                // The API rejected the code (unknown/revoked) — blurred
+                // overlay, then back to the sign-in screen.
+                showErrorModal('Your session has ended',
+                    err.message || 'Please sign in again with your access code.',
+                    function () { signOut(); });
             });
     }
 

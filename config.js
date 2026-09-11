@@ -11,6 +11,41 @@ window.WORKREADY_CONFIG = {
     CAREER_COMPASS_URL: 'https://borck.education/career-compass/',
 
     // Company sites — used to link to the assigned company's intranet
+
+    // Sign-in page six-step journey (editable via the WorkReady Console)
+    JOURNEY_STEPS: [
+            {
+                    "num": "01",
+                    "title": "Browse & apply",
+                    "text": "Explore graduate roles on <strong>seek.jobs</strong> and apply with your CV."
+            },
+            {
+                    "num": "02",
+                    "title": "Resume outcome",
+                    "text": "Feedback lands in your <strong>personal inbox</strong> — some you'll get, some you won't."
+            },
+            {
+                    "num": "03",
+                    "title": "Interview",
+                    "text": "A typed, back-and-forth <strong>interview conversation</strong> with the hiring manager."
+            },
+            {
+                    "num": "04",
+                    "title": "Work tasks",
+                    "text": "Three briefs from your mentor, plus a quick <strong>mid-placement coaching chat</strong>."
+            },
+            {
+                    "num": "05",
+                    "title": "Lunchroom moments",
+                    "text": "<strong>Informal team lunches</strong> — the bit most internships forget to teach."
+            },
+            {
+                    "num": "06",
+                    "title": "Exit interview",
+                    "text": "A short <strong>reflective chat</strong> with HR. Not a test."
+            }
+    ],
+
     COMPANY_URLS: {
         'nexuspoint-systems': 'https://nexuspointsystems.eduserver.au/',
         'ironvale-resources': 'https://ironvaleresources.eduserver.au/',

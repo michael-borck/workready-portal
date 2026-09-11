@@ -3046,6 +3046,19 @@
         });
     }
 
+    // Render the sign-in journey steps from config (console-editable)
+    (function renderJourneySteps() {
+        var target = $('journey-steps');
+        var steps = (window.WORKREADY_CONFIG && window.WORKREADY_CONFIG.JOURNEY_STEPS) || [];
+        if (!target || !steps.length) return;
+        target.innerHTML = steps.map(function (s) {
+            return '<li class="journey-step">' +
+                '<div class="journey-num">' + escapeHtml(s.num) + '</div>' +
+                '<div class="journey-body"><h3>' + escapeHtml(s.title) + '</h3>' +
+                '<p>' + s.text + '</p></div></li>'; // text may carry <strong>
+        }).join('');
+    })();
+
     // --- Wire static external links from CONFIG ---
     // These sidebar links don't depend on student state, so we set them
     // once at boot. Keeps config.js as the single source of truth for

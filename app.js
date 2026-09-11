@@ -192,21 +192,17 @@
             })
             .catch(function (err) {
                 console.error('Failed to load state:', err);
-                var msg = err.message || 'Unknown error';
-                var html;
                 if (err instanceof TypeError) {
                     // fetch itself failed — genuinely unreachable
-                    html = 'Could not connect to WorkReady API at ' +
-                        escapeHtml(CONFIG.API_BASE) + '. Check your connection and try again.';
-                } else if (msg.indexOf('access code') !== -1) {
-                    html = '<strong>' + escapeHtml(msg) + '</strong><br><br>' +
-                        '<button class="btn" id="back-to-signin">Sign out and re-enter code</button>';
-                } else {
-                    html = escapeHtml(msg);
+                    els.dashboardContent.innerHTML =
+                        '<p class="placeholder">Could not connect to WorkReady API at ' +
+                        escapeHtml(CONFIG.API_BASE) + '. Check your connection and try again.</p>';
+                    return;
                 }
-                els.dashboardContent.innerHTML = '<p class="placeholder">' + html + '</p>';
-                var back = $('back-to-signin');
-                if (back) back.addEventListener('click', signOut);
+                // The API rejected the code (unknown/revoked) — popup and
+                // return to the sign-in screen rather than a dead dashboard.
+                alert(err.message || 'Sign-in failed — please check your access code.');
+                signOut();
             });
     }
 

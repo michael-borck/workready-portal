@@ -125,12 +125,30 @@
     }
 
     // --- Sign-in / sign-out ---
+    // Validate the code BEFORE committing anything: a wrong entry never
+    // overwrites a stored working login, and a bad boot session lands back
+    // here instead of a dead dashboard.
     function signIn(code) {
-        state.code = code;
-        localStorage.setItem('workready_code', code);
-        els.signin.classList.add('hidden');
-        els.app.classList.remove('hidden');
-        loadStudentState();
+        api('/api/v1/student/' + encodeURIComponent(code) + '/state')
+            .then(function (data) {
+                state.code = code;
+                state.student = data;
+                state.lastUnread = null;
+                localStorage.setItem('workready_code', code);
+                els.signin.classList.add('hidden');
+                els.app.classList.remove('hidden');
+                renderState();
+            })
+            .catch(function (err) {
+                console.error('Sign-in failed:', err);
+                if (err instanceof TypeError) {
+                    alert('Could not connect to WorkReady API at ' + CONFIG.API_BASE +
+                          '. Check your connection and try again.');
+                } else {
+                    alert(err.message || 'Sign-in failed — please check your access code.');
+                }
+                localStorage.removeItem('workready_code');
+            });
     }
 
     function signOut() {

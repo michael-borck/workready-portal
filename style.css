@@ -2472,3 +2472,124 @@ button.sidebar-link {
   outline: none;
   border-color: #2563eb;
 }
+
+/* ============================================================
+   Tasks view (Stage 4)
+   ============================================================ */
+.task-card {
+  background: var(--sim-white, #fff);
+  border: 1px solid var(--sim-bg-2, #ebedf3);
+  border-left: 3px solid var(--sim-primary, #1f4d99);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.task-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.task-card-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--sim-secondary, #334155);
+}
+
+.task-seq {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sim-primary, #1f4d99);
+  background: var(--sim-primary-soft, #e6edf7);
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+
+.task-pill {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--sim-bg-2, #ebedf3);
+  color: var(--sim-secondary, #334155);
+}
+
+.task-pill-assigned   { background: #fef3c7; color: #92400e; }
+.task-pill-resubmit   { background: #fee2e2; color: #b91c1c; }
+.task-pill-failed     { background: #fee2e2; color: #b91c1c; }
+.task-pill-submitted,
+.task-pill-under_review { background: #dbeafe; color: #1d4ed8; }
+.task-pill-passed     { background: #dcfce7; color: #15803d; }
+
+.task-brief {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--sim-secondary, #334155);
+  white-space: pre-line;
+  margin-bottom: 10px;
+}
+
+.task-details {
+  margin-bottom: 10px;
+}
+
+.task-details summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--sim-primary, #1f4d99);
+}
+
+.task-description {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--sim-secondary, #334155);
+  white-space: pre-line;
+  background: var(--sim-primary-tint, #f1f5fb);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 8px;
+}
+
+.task-submit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.task-input {
+  width: 100%;
+  border: 1px solid var(--sim-bg-2, #ebedf3);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.88rem;
+  resize: vertical;
+}
+
+.task-input:focus {
+  outline: none;
+  border-color: var(--sim-primary, #1f4d99);
+}
+
+.task-note {
+  font-size: 0.84rem;
+  color: var(--sim-secondary, #334155);
+  opacity: 0.85;
+  margin-top: 6px;
+}
+
+.task-note-ok  { color: #15803d; }
+.task-note-err { color: #b91c1c; }

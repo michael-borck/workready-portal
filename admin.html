@@ -386,6 +386,8 @@
             margin-top: 2px;
         }
 
+        .hidden { display: none; }
+
         .json-block {
             background: var(--bg);
             border: 1px solid var(--line);
@@ -646,13 +648,18 @@
     <div class="layout">
         <aside class="sidebar">
             <div class="panel-header">
-                <h2>Students</h2>
+                <h2>Access codes</h2>
                 <button id="refresh-students">Refresh</button>
             </div>
 
             <div class="form-row">
-                <input type="email" id="new-student-email" placeholder="new-student@curtin.edu.au">
-                <button id="create-student" class="primary">Create</button>
+                <input type="number" id="code-count" min="1" max="1000" value="10" style="max-width: 5rem;">
+                <button id="gen-codes" class="primary">Issue codes</button>
+            </div>
+            <pre id="codes-out" class="json-block hidden" style="user-select: all;"></pre>
+
+            <div class="panel-header" style="margin-top: 1rem;">
+                <h2>Students</h2>
             </div>
 
             <div id="student-list" class="student-list">
@@ -695,8 +702,9 @@
                 status: $('token-status'),
                 students: $('student-list'),
                 refresh: $('refresh-students'),
-                createBtn: $('create-student'),
-                newEmail: $('new-student-email'),
+                createBtn: $('gen-codes'),
+                newEmail: $('code-count'),
+                codesOut: $('codes-out'),
                 detail: $('detail-pane'),
                 toast: $('toast'),
             };
@@ -817,10 +825,10 @@
                 state.students.forEach(function (s) {
                     var stateKey = s.state.split(':')[0].toLowerCase();
                     var stateLabel = s.state.replace(':', ' / ').toLowerCase();
-                    var sel = state.selectedEmail === s.email ? ' selected' : '';
+                    var sel = state.selectedEmail === s.code ? ' selected' : '';
                     html +=
-                        '<div class="student-row' + sel + '" data-email="' + escapeHtml(s.email) + '">' +
-                        '<div class="student-row-email">' + escapeHtml(s.email) + '</div>' +
+                        '<div class="student-row' + sel + '" data-email="' + escapeHtml(s.code) + '">' +
+                        '<div class="student-row-email">' + escapeHtml(s.code) + '</div>' +
                         '<div class="student-row-meta">' +
                         '<span class="state-pill s-' + stateKey + '">' + escapeHtml(stateLabel) + '</span>' +
                         '<span>' + s.application_count + ' apps · ' +
@@ -871,7 +879,7 @@
                 // Identity panel
                 html += '<div class="panel">';
                 html += '<div class="panel-header">';
-                html += '<h2>' + escapeHtml(s.email) + '</h2>';
+                html += '<h2>' + escapeHtml(s.code) + '</h2>';
                 html += '<div>';
                 html += '<button class="warn" data-action="reset">Reset</button> ';
                 html += '<button class="danger" data-action="delete">Delete</button>';
@@ -879,7 +887,8 @@
                 html += '</div>';
                 html += '<dl class="kvs">';
                 html += '<dt>Student ID</dt><dd>' + s.id + '</dd>';
-                html += '<dt>Name</dt><dd>' + escapeHtml(s.name) + '</dd>';
+                html += '<dt>In-sim mailbox</dt><dd>' + escapeHtml(s.handle || '') + '</dd>';
+                html += '<dt>Display name</dt><dd>' + escapeHtml(s.display_name || '—') + '</dd>';
                 html += '<dt>Created</dt><dd>' + formatDate(s.created_at) + '</dd>';
                 html += '<dt>Pending msgs</dt><dd>' + dump.messages.pending_count + '</dd>';
                 html += '</dl>';
@@ -954,7 +963,7 @@
                 html += '</div>';
 
                 els.detail.innerHTML = html;
-                bindDetailActions(s.email);
+                bindDetailActions(s.code);
             }
 
             function renderAppCard(app) {
@@ -1323,13 +1332,22 @@
             // ============================================================
             els.refresh.addEventListener('click', loadStudents);
             els.createBtn.addEventListener('click', function () {
-                var email = els.newEmail.value.trim();
-                if (!email) return;
-                api('POST', '/api/v1/admin/students', { email: email })
-                    .then(function () {
-                        showToast('Created ' + email, 'success');
-                        els.newEmail.value = '';
-                        loadStudents();
+                var count = parseInt(els.newEmail.value, 10);
+                if (!count || count < 1) return;
+                api('POST', '/api/v1/admin/codes/generate', { count: count, cohort: 'demo' })
+                    .then(function (data) {
+                        var out = els.codesOut;
+                        out.textContent = (data.codes || []).join('\n');
+                        out.classList.remove('hidden');
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(out.textContent).then(function () {
+                                showToast('Issued ' + data.total + ' codes — copied to clipboard', 'success');
+                            }).catch(function () {
+                                showToast('Issued ' + data.total + ' codes', 'success');
+                            });
+                        } else {
+                            showToast('Issued ' + data.total + ' codes', 'success');
+                        }
                     }).catch(function (err) { showToast(err.message, 'error'); });
             });
             els.newEmail.addEventListener('keydown', function (e) {

@@ -22,7 +22,7 @@
     }
 
     var state = {
-        email: null,
+        code: null,
         student: null,
         currentView: 'dashboard',
         interview: null,  // active interview session, when in the chat
@@ -56,7 +56,7 @@
     var els = {
         signin: $('signin'),
         signinForm: $('signin-form'),
-        emailInput: $('email'),
+        emailInput: $('code'),
         app: $('app'),
         userName: $('user-name'),
         stateBadge: $('state-badge'),
@@ -109,18 +109,18 @@
     }
 
     // --- Sign-in / sign-out ---
-    function signIn(email) {
-        state.email = email;
-        localStorage.setItem('workready_email', email);
+    function signIn(code) {
+        state.code = code;
+        localStorage.setItem('workready_code', code);
         els.signin.classList.add('hidden');
         els.app.classList.remove('hidden');
         loadStudentState();
     }
 
     function signOut() {
-        state.email = null;
+        state.code = null;
         state.student = null;
-        localStorage.removeItem('workready_email');
+        localStorage.removeItem('workready_code');
         els.app.classList.add('hidden');
         els.signin.classList.remove('hidden');
         els.emailInput.value = '';
@@ -145,7 +145,7 @@
 
     // --- State loading ---
     function loadStudentState() {
-        api('/api/v1/student/' + encodeURIComponent(state.email) + '/state')
+        api('/api/v1/student/' + encodeURIComponent(state.code) + '/state')
             .then(function (data) {
                 state.student = data;
                 renderState();
@@ -166,7 +166,7 @@
         state.activeApplicationId = (s.active_application && s.active_application.id) || null;
 
         // Header
-        els.userName.textContent = s.name || s.email;
+        els.userName.textContent = s.display_name || s.handle;
         els.stateBadgeLabel.textContent = stateLabel(s.state);
         els.stateBadge.className = 'state-badge state-' + s.state.toLowerCase();
 
@@ -218,8 +218,8 @@
 
         // Pass student email to seek.jobs so it can show personalised state
         // (blocked jobs, application status, pre-fill apply form)
-        if (state.email) {
-            els.jobBoardLink.href = CONFIG.JOBS_URL + '?student=' + encodeURIComponent(state.email);
+        if (state.code) {
+            els.jobBoardLink.href = CONFIG.JOBS_URL + '?code=' + encodeURIComponent(state.code);
         }
 
         // Render the current view
@@ -464,7 +464,7 @@
 
     // --- Inbox ---
     function loadInbox(inbox) {
-        api('/api/v1/inbox/' + encodeURIComponent(state.email) + '?inbox=' + inbox)
+        api('/api/v1/inbox/' + encodeURIComponent(state.code) + '?inbox=' + inbox)
             .then(function (data) {
                 renderInbox(inbox, data);
             })
@@ -575,6 +575,7 @@
         if (view !== 'lunchroom') stopLunchroomPoll();
         if (view === 'exit-interview') loadExitInterview();
         if (view === 'perf-review') loadPerfReview();
+        if (view === 'tasks') loadTasks();
         if (view === 'teams') {
             if (teamsState.activeSlug) {
                 openTeamsChat(teamsState.activeSlug);
@@ -2303,7 +2304,7 @@
     composeForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var fd = new FormData();
-        fd.append('student_email', state.email);
+        fd.append('student_code', state.code);
         fd.append('recipient_email', composeTo.value.trim());
         fd.append('subject', composeSubject.value.trim());
         fd.append('body', composeBody.value);
@@ -2319,7 +2320,7 @@
             ? '/api/v1/mail/reply/' + mailState.replyToId
             : '/api/v1/mail/compose';
 
-        // For reply, API expects student_email + body (+ optional attachment)
+        // For reply, API expects student_code + body (+ optional attachment)
         if (mailState.replyToId) {
             fd.delete('recipient_email');
             fd.delete('subject');
@@ -2376,7 +2377,7 @@
         var msg = mailState.currentMessage;
         if (!msg) return;
         if (!confirm('Delete this message?')) return;
-        fetch(CONFIG.API_BASE + '/api/v1/mail/message/' + msg.id + '?student_email=' + encodeURIComponent(state.email), {
+        fetch(CONFIG.API_BASE + '/api/v1/mail/message/' + msg.id + '?student_code=' + encodeURIComponent(state.code), {
             method: 'DELETE',
         })
             .then(function (r) {
@@ -2397,7 +2398,7 @@
         var targetList = state.currentView === 'sent-work' ? $('sent-work-list') : sentList;
         if (!targetList) return;
         targetList.innerHTML = '<div class="empty-inbox">Loading...</div>';
-        api('/api/v1/mail/sent/' + encodeURIComponent(state.email))
+        api('/api/v1/mail/sent/' + encodeURIComponent(state.code))
             .then(function (data) {
                 if (!data.messages || data.messages.length === 0) {
                     targetList.innerHTML = '<div class="empty-inbox">No sent messages yet. Use the Compose button to send one.</div>';
@@ -2716,12 +2717,149 @@
         });
     }
 
+    // --- Tasks (Stage 4) ---
+    var TASK_STATUS_LABELS = {
+        assigned: 'To do',
+        submitted: 'Submitted',
+        under_review: 'Under review',
+        passed: 'Passed',
+        failed: 'Needs another look',
+        resubmit: 'Resubmit',
+        pending: 'Locked',
+    };
+
+    function loadTasks() {
+        var body = $('tasks-body');
+        if (!body) return;
+        var s = state.student;
+        if (!s || !s.active_application) {
+            body.innerHTML =
+                '<div class="empty-state">' +
+                '<p>Tasks become available once you\'re hired — check the job board to get started.</p>' +
+                '</div>';
+            return;
+        }
+        var appId = s.active_application.id;
+        api('/api/v1/tasks/application/' + appId)
+            .then(function (data) {
+                renderTasks(data.tasks || []);
+            })
+            .catch(function () {
+                body.innerHTML =
+                    '<div class="empty-state">' +
+                    '<p>Could not load your tasks. Is the WorkReady API running?</p>' +
+                    '</div>';
+            });
+    }
+
+    function renderTasks(tasks) {
+        var body = $('tasks-body');
+        if (!body) return;
+        if (!tasks.length) {
+            body.innerHTML =
+                '<div class="empty-state">' +
+                '<p>No tasks yet — your first brief will arrive in your work inbox.</p>' +
+                '</div>';
+            return;
+        }
+        var html = '';
+        tasks.forEach(function (t) {
+            var canSubmit = t.status === 'assigned' || t.status === 'resubmit';
+            html += '<div class="task-card">';
+            html += '<div class="task-card-head">';
+            html += '<div class="task-card-title"><span class="task-seq">Task ' + t.sequence + '</span> ' +
+                escapeHtml(t.title) + '</div>';
+            html += '<span class="task-pill task-pill-' + escapeHtml(t.status) + '">' +
+                escapeHtml(TASK_STATUS_LABELS[t.status] || t.status) + '</span>';
+            html += '</div>';
+            html += '<div class="task-brief">' + escapeHtml(t.brief) + '</div>';
+            if (canSubmit || true) {
+                // Every card gets a "Full brief" section — description is
+                // fetched lazily from the task detail endpoint on first open.
+                html += '<details class="task-details" data-task-detail="' + t.id + '">' +
+                    '<summary>Full brief</summary>' +
+                    '<div class="task-description">Loading…</div></details>';
+            }
+            if (canSubmit) {
+                html += '<form class="task-submit-form" data-task="' + t.id + '">' +
+                    '<textarea class="task-input" rows="6" required ' +
+                    'placeholder="Write or paste your submission here..."></textarea>' +
+                    '<button type="submit" class="btn btn-primary btn-sm">Submit task</button>' +
+                    '</form>';
+            } else if (t.status === 'under_review' || t.status === 'submitted') {
+                html += '<p class="task-note">Your mentor is reviewing this — feedback will land in your work inbox.</p>';
+            } else if (t.status === 'pending') {
+                html += '<p class="task-note">Locked — finish the previous task to unlock this one.</p>';
+            } else if (t.status === 'passed' || t.status === 'failed' || t.status === 'resubmit') {
+                if (t.reviewed_at) {
+                    html += '<p class="task-note">Reviewed ' + formatInTimezone(t.reviewed_at, {
+                        day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
+                    }) + '. See your work inbox for the mentor\'s feedback.</p>';
+                }
+            }
+            html += '</div>';
+        });
+        body.innerHTML = html;
+
+        // Lazy-load the full brief when a card is first expanded
+        body.querySelectorAll('.task-details').forEach(function (det) {
+            det.addEventListener('toggle', function () {
+                if (!det.open || det.getAttribute('data-loaded')) return;
+                det.setAttribute('data-loaded', '1');
+                var target = det.querySelector('.task-description');
+                api('/api/v1/tasks/' + det.getAttribute('data-task-detail'))
+                    .then(function (d) {
+                        target.textContent = d.description || d.brief || 'No further detail.';
+                    })
+                    .catch(function () {
+                        target.textContent = 'Could not load the full brief.';
+                    });
+            });
+        });
+
+        body.querySelectorAll('.task-submit-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var tid = form.getAttribute('data-task');
+                var ta = form.querySelector('.task-input');
+                var btn = form.querySelector('button[type="submit"]');
+                if (!ta.value.trim()) return;
+                btn.disabled = true;
+                btn.textContent = 'Submitting...';
+                var fd = new FormData();
+                fd.append('body', ta.value);
+                fetch(CONFIG.API_BASE + '/api/v1/tasks/' + tid + '/submit', { method: 'POST', body: fd })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('Submission failed (' + r.status + ')');
+                        return r.json();
+                    })
+                    .then(function (res) {
+                        var note = document.createElement('p');
+                        note.className = 'task-note task-note-ok';
+                        note.textContent = res.status === 'under_review'
+                            ? 'Submitted — under review. Your mentor\'s feedback will arrive in your work inbox.'
+                            : (res.message || 'Submitted.');
+                        form.replaceWith(note);
+                        setTimeout(loadTasks, 800);
+                    })
+                    .catch(function (err) {
+                        btn.disabled = false;
+                        btn.textContent = 'Submit task';
+                        var note = document.createElement('p');
+                        note.className = 'task-note task-note-err';
+                        note.textContent = err.message;
+                        form.appendChild(note);
+                    });
+            });
+        });
+    }
+
     // --- Wire static external links from CONFIG ---
     // These sidebar links don't depend on student state, so we set them
     // once at boot. Keeps config.js as the single source of truth for
     // external URLs — no hardcoded hrefs to drift out of sync.
     // (jobBoardLink gets re-set per-render once we know the student's
-    // email, so we can append ?student= for personalised state — see
+    // code, so we can append ?code= for personalised state — see
     // the render loop above. This boot assignment is the pre-signin
     // fallback so the link works even before the student is known.)
     if (els.jobBoardLink && CONFIG.JOBS_URL) {
@@ -2744,13 +2882,13 @@
     wireTeamsControls();
 
     // --- Initial load ---
-    var savedEmail = localStorage.getItem('workready_email');
-    if (savedEmail) {
-        signIn(savedEmail);
+    var savedCode = localStorage.getItem('workready_code');
+    if (savedCode) {
+        signIn(savedCode);
     }
 
     // Refresh state every 30 seconds (catches new messages, stage transitions)
     setInterval(function () {
-        if (state.email) loadStudentState();
+        if (state.code) loadStudentState();
     }, 30000);
 })();

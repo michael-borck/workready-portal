@@ -22,12 +22,13 @@
                 <p class="signin-tagline">A safe place to apply, interview, and work — without the stakes of the real thing.</p>
 
                 <form id="signin-form" class="signin-form">
-                    <label for="email">Curtin email address</label>
-                    <input type="email" id="email" name="email" required
-                           placeholder="firstname.lastname@student.curtin.edu.au">
+                    <label for="code">Access code</label>
+                    <input type="text" id="code" name="code" required
+                           placeholder="WR-XXXX-XXXX" autocomplete="off"
+                           style="text-transform: uppercase;">
                     <button type="submit" class="btn btn-primary">Sign in &rarr;</button>
                 </form>
-                <p class="signin-help">No password — use any email to begin. Your progress is saved against this address.</p>
+                <p class="signin-help">Enter the access code from your unit coordinator. No email or password needed — the simulation stores nothing about you.</p>
             </div>
 
             <aside class="signin-right" aria-label="What to expect">
@@ -295,7 +296,7 @@
                 <!-- Tasks view -->
                 <div id="view-tasks" class="view hidden">
                     <h2>Your Tasks</h2>
-                    <div class="placeholder">Task workspace coming soon. This is where you'll receive your work assignments and submit your deliverables.</div>
+                    <div id="tasks-body"></div>
                 </div>
 
                 <!-- Team view -->

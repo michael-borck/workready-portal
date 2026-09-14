@@ -2,6 +2,7 @@
 
 (function () {
     'use strict';
+    var fetch = window.WRSession.fetch;
 
     var CONFIG = window.WORKREADY_CONFIG;
 
@@ -129,17 +130,18 @@
     // overwrites a stored working login, and a bad boot session lands back
     // here instead of a dead dashboard.
     function signIn(code) {
-        api('/api/v1/student/' + encodeURIComponent(code) + '/state')
+        window.WRSession.login(code)
             .then(function (data) {
-                state.code = code;
+                state.code = 'session';
                 state.student = data;
                 state.lastUnread = null;
-                localStorage.setItem('workready_code', code);
+                els.emailInput.value = '';
                 els.signin.classList.add('hidden');
                 els.app.classList.remove('hidden');
                 renderState();
             })
             .catch(function (err) {
+                if (err.name === 'AbortError') return;
                 console.error('Sign-in failed:', err);
                 localStorage.removeItem('workready_code');
                 if (err instanceof TypeError) {
@@ -156,6 +158,7 @@
     }
 
     function signOut() {
+        window.WRSession.logout();
         stopLunchroomPoll();
         stopTeamsPoll();
         state.code = null;
@@ -164,11 +167,36 @@
         state.personaPrompted = false;
         state.currentView = 'dashboard';
         state.interview = null;
+        state.activeApplicationId = null;
+        teamsState.activeSlug = null;
+        teamsState.messages = [];
+        teamsState.team = [];
+        teamsState.org = [];
+        teamsState.loaded = false;
+        exitState.session = null;
+        perfState.session = null;
+        lunchroomState.activeSessionId = null;
+        lunchroomState.sessions = [];
+        mailState.replyToId = null;
+        clearTimeout(showLiveToast.timer);
+        var toast = $('live-toast'); if (toast) toast.classList.add('hidden');
+        document.querySelectorAll('.modal').forEach(function (el) { el.classList.add('hidden'); });
+        ['interview-messages', 'teams-conv-messages', 'inbox-personal-list', 'inbox-work-list', 'tasks-body', 'dashboard-content', 'modal-body'].forEach(function (id) {
+            var el = $(id); if (el) el.textContent = '';
+        });
+        document.querySelectorAll('.view').forEach(function (view) {
+            view.classList.toggle('hidden', view.id !== 'view-dashboard');
+        });
+        document.querySelectorAll('.interview-messages, .teams-conv-messages').forEach(function (el) { el.textContent = ''; });
+        var compose = $('compose-form'); if (compose) compose.reset();
         localStorage.removeItem('workready_code');
         els.app.classList.add('hidden');
         els.signin.classList.remove('hidden');
         els.emailInput.value = '';
         resetTheme();
+        // Replace the page as well, so detached view nodes and old closures
+        // cannot survive account switching on a shared browser.
+        window.location.replace(window.location.pathname);
     }
 
     // --- Theme switching ---
@@ -194,15 +222,27 @@
         $('app-error-title').textContent = title;
         $('app-error-message').textContent = message;
         overlay.classList.remove('hidden');
+        els.app.inert = true;
+        els.signin.inert = true;
         var ok = $('app-error-ok');
+        var previousFocus = document.activeElement;
         var handler = function () {
             overlay.classList.add('hidden');
-            ok.removeEventListener('click', handler);
+            els.app.inert = false;
+            els.signin.inert = false;
+            ok.onclick = null;
+            overlay.onkeydown = null;
             if (onOk) onOk();
+            if (previousFocus && previousFocus.isConnected) previousFocus.focus();
         };
-        ok.removeEventListener('click', handler);
-        ok.addEventListener('click', handler);
+        ok.onclick = handler;
+        overlay.onkeydown = function (event) {
+            if (event.key === 'Tab') { event.preventDefault(); ok.focus(); }
+            if (event.key === 'Escape') { event.preventDefault(); handler(); }
+        };
+        ok.focus();
     }
+    window.addEventListener('workready:error', function (event) { showErrorModal('Could not complete that action', event.detail, null); });
 
     function showLiveToast(text, view) {
         var toast = $('live-toast');
@@ -235,6 +275,7 @@
                 renderState();
             })
             .catch(function (err) {
+                if (err.name === 'AbortError') return;
                 console.error('Failed to load state:', err);
                 if (err instanceof TypeError) {
                     // fetch itself failed — genuinely unreachable
@@ -311,7 +352,7 @@
         // Pass student email to seek.jobs so it can show personalised state
         // (blocked jobs, application status, pre-fill apply form)
         if (state.code) {
-            els.jobBoardLink.href = CONFIG.JOBS_URL + '?code=' + encodeURIComponent(state.code);
+            els.jobBoardLink.href = CONFIG.JOBS_URL;
         }
 
         // Render the current view
@@ -329,6 +370,7 @@
         return ({
             NOT_APPLIED: 'Not Applied',
             APPLIED: 'Application Under Review',
+            INTERVIEW: 'Interview stage',
             HIRED: 'Employed',
             COMPLETED: 'Internship Complete',
         })[state] || state;
@@ -369,7 +411,7 @@
         var html = '';
 
         if (s.state === 'NOT_APPLIED') {
-            els.dashboardTitle.textContent = 'Welcome to WorkReady, ' + (s.name || 'student') + '!';
+            els.dashboardTitle.textContent = 'Welcome to WorkReady, ' + (s.display_name || 'student') + '!';
             html =
                 '<div class="dashboard-empty">' +
                 '<h3>Ready to start your internship journey?</h3>' +
@@ -387,7 +429,7 @@
             html =
                 '<p>You have applied for the following role. Check your personal inbox for updates.</p>' +
                 renderApplicationList(s.applications);
-        } else if (s.state === 'HIRED') {
+        } else if (s.state === 'HIRED' || s.state === 'INTERVIEW') {
             var company = s.active_application.company_slug;
             var stage = s.active_application.current_stage;
             var atInterview = stage === 'interview';
@@ -444,7 +486,13 @@
                 renderApplicationList(s.applications);
         }
 
+        if (s.next_action) {
+            html = '<div class="next-action"><h3>What to do next</h3><p>' + escapeHtml(s.next_action.label) +
+                '</p><button id="next-action" class="btn btn-primary">Continue</button></div>' + html;
+        }
         els.dashboardContent.innerHTML = html;
+        var next = $('next-action');
+        if (next) next.addEventListener('click', function () { switchView(s.next_action.view); });
 
         // Wire dashboard primer button if present
         var dashPrimerBtn = $('dashboard-primer-btn');
@@ -2949,7 +2997,7 @@
         }
         var html = '';
         tasks.forEach(function (t) {
-            var canSubmit = t.status === 'assigned' || t.status === 'resubmit';
+            var canSubmit = t.status === 'assigned' || t.status === 'resubmit' || t.status === 'failed';
             html += '<div class="task-card">';
             html += '<div class="task-card-head">';
             html += '<div class="task-card-title"><span class="task-seq">Task ' + t.sequence + '</span> ' +
@@ -3052,10 +3100,11 @@
         var steps = (window.WORKREADY_CONFIG && window.WORKREADY_CONFIG.JOURNEY_STEPS) || [];
         if (!target || !steps.length) return;
         target.innerHTML = steps.map(function (s) {
+            var text = escapeHtml(s.text).replace(/&lt;(\/?)(strong|em)&gt;/g, '<$1$2>');
             return '<li class="journey-step">' +
                 '<div class="journey-num">' + escapeHtml(s.num) + '</div>' +
                 '<div class="journey-body"><h3>' + escapeHtml(s.title) + '</h3>' +
-                '<p>' + s.text + '</p></div></li>'; // text may carry <strong>
+                '<p>' + text + '</p></div></li>'; // Only simple emphasis markup is allowed.
         }).join('');
     })();
 
@@ -3088,9 +3137,11 @@
     wirePersonaControls();
 
     // --- Initial load ---
-    var savedCode = localStorage.getItem('workready_code');
-    if (savedCode) {
-        signIn(savedCode);
+    if (window.WRSession.active()) {
+        window.WRSession.state().then(function (data) {
+            state.code = 'session'; state.student = data;
+            els.signin.classList.add('hidden'); els.app.classList.remove('hidden'); renderState();
+        }).catch(function (err) { if (err.name !== 'AbortError') signOut(); });
     }
 
     // Adaptive polling: chat views feel live (8s), everything else idles (30s).

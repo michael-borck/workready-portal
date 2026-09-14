@@ -2706,7 +2706,6 @@ button.sidebar-link {
   .action-buttons a.btn { width: 100%; text-align: center; }
   .task-submit-form .task-file { width: 100%; font-size: 0.8rem; }
   .live-toast { left: 12px; right: 12px; max-width: none; bottom: 12px; }
-  #user-name-edit { display: none; }
 }
 
 #user-name-edit {

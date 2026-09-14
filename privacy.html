@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>WorkReady data handling</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<main class="wrap" style="max-width:48rem;padding:2rem">
+<h1>Your simulation data</h1>
+<p>WorkReady is an educational simulation. Its employers and roles are fictional. Automated responses are learning feedback, not an employment decision or an official grade.</p>
+<h2>Use fictional material</h2>
+<p>Choose an invented persona name and use the supplied synthetic resumes. Do not include real contact details, identity numbers, confidential workplace documents, or another person's information.</p>
+<h2>What is saved</h2>
+<p>Your persona, applications, messages, conversations, submissions and feedback are stored for your journey and lecturer review. The lecturer keeps the code-to-student roster separately. This is pseudonymous participation, not guaranteed anonymity.</p>
+<p>Website and infrastructure providers also process ordinary connection metadata, such as IP addresses and request times.</p>
+<h2>Uploads and AI providers</h2>
+<p>Matching contact details are filtered from text. The filter may miss names, addresses and identifying context. Web resume uploads are processed in memory. Mail attachments are rebuilt as filtered text PDFs; layout and images are discarded.</p>
+<p id="provider">Ask your lecturer which AI provider and retention period your cohort uses.</p>
+<p>Cloud AI providers receive filtered prompts and conversation context when selected. A local model may also be hosted remotely. Company hiring-desk chat is a separate service with its own data handling; do not enter private information there.</p>
+<h2>Sessions, retention and deletion</h2>
+<p>The access code is exchanged for a time-limited session. Sign out on shared devices. Each website has its own session. Signing out ends that session but does not delete saved learning records.</p>
+<p>Your lecturer can erase your records and files. Ask the lecturer to confirm the cohort retention period and when backups expire. Older backups may persist until their scheduled expiry.</p>
+<p><a href="index.html">Return to WorkReady</a></p>
+</main><script src="config.js"></script><script>
+fetch(window.WORKREADY_CONFIG.API_BASE + '/api/v1/privacy').then(function(r){return r.json();}).then(function(d){
+document.getElementById('provider').textContent='Configured API provider: '+d.provider+'. Operator retention target: '+d.retention_days+' days. '+d.retention;
+}).catch(function(){});
+</script></body></html>

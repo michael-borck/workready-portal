@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://workready-api.eduserver.au; img-src 'self' data:; frame-src https://primer.eduserver.au; base-uri 'self'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkReady — Your Internship Journey</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -28,7 +30,7 @@
                            style="text-transform: uppercase;">
                     <button type="submit" class="btn btn-primary">Sign in &rarr;</button>
                 </form>
-                <p class="signin-help">Enter the access code from your unit coordinator. No email or password needed — the simulation stores nothing about you.</p>
+                <p class="signin-help">Use your issued access code and an invented persona. Simulation activity is saved for learning and lecturer review. <a href="privacy.html">How your data is handled</a>.</p>
             </div>
 
             <aside class="signin-right" aria-label="What to expect">
@@ -62,7 +64,7 @@
                             </ul>
                         </span>
                     </span>
-                    <span id="user-name" class="user-name"></span><span id="user-name-edit" title="Edit your candidate profile" aria-hidden="true">✎</span>
+                    <span id="user-name" class="user-name"></span><button type="button" id="user-name-edit" class="btn" aria-label="Edit your candidate profile">✎</button>
                     <button id="signout-btn" class="btn btn-link">Sign out</button>
                 </div>
             </div>
@@ -422,7 +424,7 @@
             <h2>Your candidate profile</h2>
             <p class="persona-help">
                 Pick any name you like — this is your persona in the simulation.
-                Recruiters never see your real one, and nothing here identifies you.
+                Use an invented name, not your real name. Your lecturer can review simulation activity.
                 Your in-sim mailbox is derived from it.
             </p>
             <form id="persona-form">
@@ -473,13 +475,14 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script src="config.js?v=0.3.0"></script>
+    <script src="session.js?v=0.3.0"></script>
+    <script src="app.js?v=0.3.0"></script>
     <div id="live-toast" class="live-toast hidden" role="status"></div>
 
     <!-- System error overlay (blurred backdrop, blocks interaction) -->
     <div id="app-error-overlay" class="app-overlay hidden">
-        <div class="app-modal" role="alertdialog" aria-modal="true" aria-labelledby="app-error-title">
+        <div class="app-modal" role="alertdialog" aria-modal="true" aria-labelledby="app-error-title" aria-describedby="app-error-message">
             <div class="app-modal-icon" aria-hidden="true">!</div>
             <h3 id="app-error-title">Sign-in problem</h3>
             <p id="app-error-message"></p>

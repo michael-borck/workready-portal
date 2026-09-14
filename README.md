@@ -1,40 +1,45 @@
-# WorkReady Portal
+# WorkReady portal
 
-The single-page student workstation for the WorkReady simulation.
+The student workstation for WorkReady. Students sign in with issued contractor codes, track applications and use personal/work inboxes, interviews, tasks, Teams-style chat, coaching and the lunchroom.
 
-The portal transforms based on the student's state — pre-hire it shows the
-primer and job board, post-hire it themes itself to the assigned company
-and reveals task workspace, work inbox, team view, and intranet access.
+[Project home](https://github.com/michael-borck/workready-deploy) · [Architecture](https://github.com/michael-borck/workready-deploy/blob/main/docs/architecture.md) · [Privacy](https://github.com/michael-borck/workready-deploy/blob/main/docs/privacy.md) · [Live portal](https://workready.eduserver.au/)
 
-## Configuration
+## Files and configuration
 
-Edit `config.js` to set the API base URL and external links.
+- `index.html`, `app.js`, `style.css` define the student interface.
+- `config.js` defines the API base, company links, themes and journey-step copy.
+- `session.js` is the shared session client also loaded by the job board and company forms. Changes can affect all those sites.
+- `privacy.html` explains student data handling.
+- `admin.html` is the lecturer interface served through the local publishing console. The Pages workflow excludes it from the public site.
 
-For local development, override the API base in the browser console:
-```javascript
-localStorage.setItem('workready_api_base', 'http://localhost:8000');
-```
+The client exchanges a contractor code for an expiring bearer session and stores the token in `sessionStorage`. Other website origins have separate sessions. See [authentication design](https://github.com/michael-borck/workready-deploy/blob/main/docs/adr/0003-contractor-codes-and-sessions.md).
 
-## Local Development
+## Student states
 
-Open `index.html` in a browser, or serve with a static file server:
+| State | Meaning |
+|---|---|
+| `NOT_APPLIED` | No current application journey |
+| `APPLIED` | Application submitted or outcome pending |
+| `INTERVIEW` | Shortlisted and in the interview stage |
+| `HIRED` | Placement activated after a successful hiring interview |
+| `COMPLETED` | Placement completed; history and reflection remain available |
+
+Application stage and status are separate fields. The portal changes its theme and available views during placement. Tasks, mail and social activities can overlap rather than form a strict sequence of screens.
+
+## Development and checks
+
+There is no asset build. From this repository:
+
 ```bash
+node --check app.js
+node --test tests/session.test.cjs
 python3 -m http.server 8080
 ```
 
-Make sure the WorkReady API is running and CORS allows your origin.
+Open `http://localhost:8080` for visual inspection. A functional local setup requires agreement between the API URL, HTML Content Security Policy and backend CORS. Changing a localStorage override alone is insufficient. Use an isolated local API and synthetic identities, or the API repository's browser test described in [operations](https://github.com/michael-borck/workready-deploy/blob/main/docs/operations.md#checks-before-publishing).
 
-## States
+## Publication
 
-| State | Trigger | What's visible |
-|-------|---------|---------------|
-| `NOT_APPLIED` | New student, no applications | Primer + job board links |
-| `APPLIED` | Submitted resume, awaiting outcome | Personal inbox + application history |
-| `HIRED` | Resume passed, advanced to interview | Theme switches to company; tasks, work inbox, intranet, team |
-| `COMPLETED` | All 6 stages done | Final reflection + replay option |
+[The Pages workflow](.github/workflows/pages.yml) publishes repository-root assets after a push to `main`. Review and publish changes to `session.js` together with any dependent API/job-board/company changes. Versioned script URLs help prevent cached clients from mixing contracts.
 
-## Repos
-
-- [workready-api](https://github.com/michael-borck/workready-api) — backend
-- [workready-jobs](https://github.com/michael-borck/workready-jobs) — job board
-- [workready-primer](https://github.com/michael-borck/workready-primer) — Ink interactive fiction
+Use the [local console](https://github.com/michael-borck/workready-deploy/blob/main/console/README.md) for lecturer access. Project-wide configuration and deployment instructions live in the [umbrella guides](https://github.com/michael-borck/workready-deploy/blob/main/docs/README.md).
